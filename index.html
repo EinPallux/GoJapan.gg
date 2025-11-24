@@ -302,7 +302,6 @@
         </nav>
 
         <!-- Content Area -->
-        <!-- CHANGED: Removed p-4 md:p-8 and overflow-y-auto from here to handle per-page layout -->
         <main class="flex-1 overflow-hidden relative bg-slate-50 flex flex-col" id="main-content">
             <!-- Dynamic Content Injected Here -->
         </main>
@@ -351,18 +350,35 @@
 
     <!-- --- JAVASCRIPT LOGIC --- -->
     <script>
-        const apiKey = ""; // API Key Injected by Environment
+        const envApiKey = ""; // API Key Injected by Environment (Fallback)
 
         // --- GEMINI API SERVICE ---
         class GeminiService {
             constructor() {
                 this.baseUrl = "https://generativelanguage.googleapis.com/v1beta/models";
-                this.textModel = "gemini-2.5-flash-preview-09-2025";
                 this.ttsModel = "gemini-2.5-flash-preview-tts";
             }
 
+            // Get Key from LocalStorage OR Environment
+            getApiKey() {
+                const storedKey = localStorage.getItem('gojapan_api_key');
+                return (storedKey && storedKey.trim() !== '') ? storedKey : envApiKey;
+            }
+
+            // Get Model from LocalStorage OR Default
+            getTextModel() {
+                const storedModel = localStorage.getItem('gojapan_model_name');
+                // Default to a solid model if user hasn't set one
+                return (storedModel && storedModel.trim() !== '') ? storedModel : "gemini-2.5-flash-preview-09-2025";
+            }
+
             async generateText(prompt, systemInstruction = "You are a helpful Japanese tutor.") {
-                const url = `${this.baseUrl}/${this.textModel}:generateContent?key=${apiKey}`;
+                const key = this.getApiKey();
+                const model = this.getTextModel();
+                
+                // Allow user to use experimental models if they type them in settings
+                const url = `${this.baseUrl}/${model}:generateContent?key=${key}`;
+                
                 const payload = {
                     contents: [{ parts: [{ text: prompt }] }],
                     systemInstruction: { parts: [{ text: systemInstruction }] }
@@ -372,14 +388,16 @@
             }
 
             async generateSpeech(text) {
-                const url = `${this.baseUrl}/${this.ttsModel}:generateContent?key=${apiKey}`;
+                const key = this.getApiKey();
+                const url = `${this.baseUrl}/${this.ttsModel}:generateContent?key=${key}`;
+                
                 const payload = {
                     contents: [{ parts: [{ text: text }] }],
                     generationConfig: {
                         responseModalities: ["AUDIO"],
                         speechConfig: {
                             voiceConfig: {
-                                prebuiltVoiceConfig: { voiceName: "Kore" } // Using Kore (Female-sounding, good for clarity)
+                                prebuiltVoiceConfig: { voiceName: "Kore" } 
                             }
                         }
                     }
@@ -406,11 +424,17 @@
                             body: JSON.stringify(payload)
                         });
                         
+                        const data = await response.json();
+                        
+                        // Check for API Errors inside the JSON
+                        if (data.error) throw new Error(data.error.message || "API Error");
                         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                        return await response.json();
+                        
+                        return data;
                     } catch (e) {
+                        console.error(`Attempt ${i+1} failed:`, e);
                         if (i === retries - 1) throw e;
-                        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i))); // Exponential backoff
+                        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i))); 
                     }
                 }
             }
@@ -863,12 +887,11 @@
                     `;
                     lucide.createIcons();
                 } catch (e) {
-                    area.innerHTML = `<div class="text-red-500 text-xs">Sensei is busy. Try again later.</div>`;
+                    area.innerHTML = `<div class="text-red-500 text-xs">Sensei is busy or key is invalid. Check settings.</div>`;
                 }
             }
 
             renderSensei(container) {
-                // FIXED: Used simple flex-col structure without wrapping in scrolled div
                 container.innerHTML = `
                     <div class="flex flex-col h-full animate-slide-in">
                         <div class="flex-none p-4 border-b border-slate-200 bg-white">
@@ -878,7 +901,7 @@
                                 </div>
                                 <div>
                                     <h2 class="font-bold text-slate-800">Sensei AI</h2>
-                                    <p class="text-xs text-slate-400">Powered by Gemini 2.5 Flash</p>
+                                    <p class="text-xs text-slate-400">Model: ${gemini.getTextModel()}</p>
                                 </div>
                             </div>
                         </div>
@@ -951,7 +974,7 @@
                     
                 } catch (err) {
                     document.getElementById(loadingId).remove();
-                    container.innerHTML += `<div class="chat-bubble chat-ai text-red-500">Sensei is disconnected. Please try again.</div>`;
+                    container.innerHTML += `<div class="chat-bubble chat-ai text-red-500">Error: ${err.message}. Check API Key in Profile.</div>`;
                 }
 
                 btn.disabled = false;
@@ -1102,7 +1125,11 @@
                 this.navigate('dashboard');
             }
 
+            // NEW: Render Profile with Settings
             renderProfile(container) {
+                const storedKey = localStorage.getItem('gojapan_api_key') || '';
+                const storedModel = localStorage.getItem('gojapan_model_name') || 'gemini-2.5-flash-preview-09-2025';
+
                 container.innerHTML = `
                 <div class="h-full overflow-y-auto p-4 md:p-8">
                     <div class="animate-slide-in">
@@ -1126,11 +1153,46 @@
                             </div>
                         </div>
 
-                        <button onclick="localStorage.clear(); location.reload();" class="w-full border-2 border-red-100 text-red-400 py-3 rounded-xl font-bold hover:bg-red-50 transition text-sm">
-                            Reset Progress
+                        <!-- SETTINGS SECTION -->
+                        <div class="bg-white rounded-xl p-6 mb-6 shadow-sm border border-slate-100">
+                            <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                <i data-lucide="settings" class="w-5 h-5 text-slate-400"></i>
+                                System Settings
+                            </h3>
+                            
+                            <div class="mb-4 text-left">
+                                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Gemini API Key</label>
+                                <input type="password" id="settings-key" value="${storedKey}" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500" placeholder="Paste your Google AI Studio Key here">
+                                <p class="text-[10px] text-slate-400 mt-1">Stored locally in your browser. Required for personal use.</p>
+                            </div>
+
+                            <div class="mb-6 text-left">
+                                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Model Name</label>
+                                <input type="text" id="settings-model" value="${storedModel}" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500" placeholder="e.g. gemini-1.5-pro">
+                                <p class="text-[10px] text-slate-400 mt-1">Specify which Gemini model to use (e.g., gemini-1.5-pro, gemini-2.0-flash-exp).</p>
+                            </div>
+
+                            <button onclick="app.saveSettings()" class="w-full bg-slate-900 text-white py-2 rounded-lg font-bold text-sm hover:bg-slate-800 transition">
+                                Save Settings
+                            </button>
+                        </div>
+
+                        <button onclick="localStorage.removeItem('gojapan_save'); location.reload();" class="w-full border-2 border-red-100 text-red-400 py-3 rounded-xl font-bold hover:bg-red-50 transition text-sm">
+                            Reset Game Progress
                         </button>
                     </div>
                 </div>`;
+            }
+
+            saveSettings() {
+                const key = document.getElementById('settings-key').value;
+                const model = document.getElementById('settings-model').value;
+                
+                localStorage.setItem('gojapan_api_key', key);
+                localStorage.setItem('gojapan_model_name', model);
+                
+                alert("Settings Saved! Sensei has been updated.");
+                this.navigate('profile'); // Refresh view
             }
         }
 
