@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoJapan.gg - Learn Japanese RPG</title>
+    <!-- Tailwind CSS for rapid, modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons for UI elements -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts: Noto Sans JP for Japanese text -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- CUSTOM CSS SECTION --- */
+        :root {
+            --primary: #FF4E50; /* Japanese Sun Red */
+            --secondary: #1E293B; /* Dark Slate */
+            --accent: #F9D423; /* Gold/Yellow */
+            --paper: #F8F9FA;
+        }
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .jp-font {
+            font-family: 'Noto Sans JP', sans-serif;
+        }
+
+        /* Animations */
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse-gold {
+            0% { box-shadow: 0 0 0 0 rgba(249, 212, 35, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(249, 212, 35, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(249, 212, 35, 0); }
+        }
+
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+
+        .animate-slide-in {
+            animation: slideIn 0.4s ease-out forwards;
+        }
+
+        .animate-shake {
+            animation: shake 0.3s ease-in-out;
+        }
+
+        .level-up-badge {
+            animation: pulse-gold 2s infinite;
+        }
+
+        /* Card Styles */
+        .kana-card {
+            perspective: 1000px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .kana-card:hover {
+            transform: translateY(-4px);
+        }
+        .kana-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .kana-card.flipped .kana-card-inner {
+            transform: rotateY(180deg);
+        }
+        .kana-front, .kana-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .kana-front {
+            background-color: white;
+            border: 2px solid #e2e8f0;
+        }
+        .kana-back {
+            background-color: var(--secondary);
+            color: white;
+            transform: rotateY(180deg);
+        }
+
+        /* Progress Bar */
+        .xp-bar-container {
+            background: rgba(255,255,255,0.2);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        .xp-bar-fill {
+            background: linear-gradient(90deg, #F9D423, #FF4E50);
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        /* Modal */
+        .modal-overlay {
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen">
+
+    <!-- --- HEADER / TOP BAR --- -->
+    <header class="bg-slate-900 text-white p-4 shadow-lg z-20">
+        <div class="max-w-6xl mx-auto flex items-center justify-between">
+            <!-- Logo -->
+            <div class="flex items-center gap-2 cursor-pointer" onclick="app.navigate('dashboard')">
+                <div class="bg-red-500 w-8 h-8 rounded-full flex items-center justify-center font-bold text-white shadow-lg border-2 border-white">GO</div>
+                <h1 class="text-xl font-bold tracking-wider">GoJapan<span class="text-red-400">.gg</span></h1>
+            </div>
+
+            <!-- Stats -->
+            <div class="hidden md:flex items-center gap-6">
+                <!-- Rank -->
+                <div class="flex flex-col items-end">
+                    <span class="text-xs text-slate-400 uppercase tracking-wider font-bold">Current Rank</span>
+                    <span class="text-yellow-400 font-bold" id="header-rank">Ronin</span>
+                </div>
+                <!-- XP Bar -->
+                <div class="w-48">
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-slate-300">Level <span id="header-level">1</span></span>
+                        <span class="text-slate-300"><span id="header-xp">0</span> / <span id="header-next-xp">100</span> XP</span>
+                    </div>
+                    <div class="h-2 xp-bar-container">
+                        <div id="xp-bar-fill" class="h-full xp-bar-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+                <!-- Streak -->
+                <div class="flex items-center gap-1 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
+                    <i data-lucide="flame" class="w-4 h-4 text-orange-500"></i>
+                    <span class="font-bold text-orange-500" id="header-streak">0</span>
+                </div>
+            </div>
+
+            <!-- Mobile Menu Btn -->
+            <button class="md:hidden text-white" onclick="app.toggleMobileMenu()">
+                <i data-lucide="menu"></i>
+            </button>
+        </div>
+        
+        <!-- Mobile Stats (Visible only on small screens) -->
+        <div class="md:hidden mt-4 pt-4 border-t border-slate-700 flex justify-between items-center text-sm">
+            <span class="text-yellow-400 font-bold" id="mobile-rank">Ronin</span>
+            <div class="flex items-center gap-1">
+                <span class="text-slate-300">Lvl <span id="mobile-level">1</span></span>
+                <div class="w-24 h-2 xp-bar-container mx-2">
+                    <div id="mobile-xp-bar-fill" class="h-full xp-bar-fill" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- --- MAIN LAYOUT --- -->
+    <div class="flex flex-1 overflow-hidden relative">
+        
+        <!-- Sidebar Navigation (Desktop) -->
+        <nav class="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 shadow-sm z-10">
+            <div class="p-6">
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Learning Path</h2>
+                <ul class="space-y-2">
+                    <li>
+                        <button onclick="app.navigate('dashboard')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors bg-red-50 text-red-500 font-semibold" data-target="dashboard">
+                            <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                            Dashboard
+                        </button>
+                    </li>
+                    <li>
+                        <button onclick="app.navigate('kana')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors" data-target="kana">
+                            <i data-lucide="grid-3x3" class="w-5 h-5"></i>
+                            Kana Dojo
+                        </button>
+                    </li>
+                    <li>
+                        <button onclick="app.navigate('vocab')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors" data-target="vocab">
+                            <i data-lucide="book-a" class="w-5 h-5"></i>
+                            Vocabulary
+                        </button>
+                    </li>
+                    <li>
+                        <button onclick="app.navigate('grammar')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors" data-target="grammar">
+                            <i data-lucide="scroll-text" class="w-5 h-5"></i>
+                            Grammar Rules
+                        </button>
+                    </li>
+                </ul>
+
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-8 mb-4">Your Journey</h2>
+                <ul class="space-y-2">
+                    <li>
+                        <button onclick="app.navigate('quests')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors" data-target="quests">
+                            <i data-lucide="sword" class="w-5 h-5"></i>
+                            Daily Quests
+                            <span class="ml-auto bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full" id="quest-badge">3</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button onclick="app.navigate('profile')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors" data-target="profile">
+                            <i data-lucide="user" class="w-5 h-5"></i>
+                            Profile
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Content Area -->
+        <main class="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8" id="main-content">
+            <!-- Dynamic Content Injected Here -->
+        </main>
+
+    </div>
+
+    <!-- --- MOBILE NAVIGATION (Bottom Bar) --- -->
+    <nav class="md:hidden bg-white border-t border-slate-200 flex justify-around p-3 pb-safe z-30">
+        <button onclick="app.navigate('dashboard')" class="flex flex-col items-center gap-1 text-red-500">
+            <i data-lucide="layout-dashboard" class="w-6 h-6"></i>
+            <span class="text-[10px] font-bold">Home</span>
+        </button>
+        <button onclick="app.navigate('kana')" class="flex flex-col items-center gap-1 text-slate-400">
+            <i data-lucide="grid-3x3" class="w-6 h-6"></i>
+            <span class="text-[10px] font-bold">Kana</span>
+        </button>
+        <button onclick="app.navigate('quiz')" class="flex flex-col items-center justify-center -mt-8 bg-red-500 text-white w-14 h-14 rounded-full shadow-lg border-4 border-slate-50">
+            <i data-lucide="swords" class="w-6 h-6"></i>
+        </button>
+        <button onclick="app.navigate('vocab')" class="flex flex-col items-center gap-1 text-slate-400">
+            <i data-lucide="book-a" class="w-6 h-6"></i>
+            <span class="text-[10px] font-bold">Vocab</span>
+        </button>
+        <button onclick="app.navigate('profile')" class="flex flex-col items-center gap-1 text-slate-400">
+            <i data-lucide="user" class="w-6 h-6"></i>
+            <span class="text-[10px] font-bold">Profile</span>
+        </button>
+    </nav>
+
+    <!-- --- MODALS --- -->
+    <div id="level-up-modal" class="hidden fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl animate-shake">
+            <div class="w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-4 level-up-badge text-white">
+                <i data-lucide="trophy" class="w-10 h-10"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-800 mb-2">Level Up!</h2>
+            <p class="text-slate-500 mb-6">You are now Level <span id="modal-new-level" class="font-bold text-red-500">2</span></p>
+            <p class="text-sm text-slate-400 mb-6">Keep studying to reach the next rank!</p>
+            <button onclick="app.closeModal('level-up-modal')" class="w-full bg-red-500 text-white font-bold py-3 rounded-xl hover:bg-red-600 transition">Awesome!</button>
+        </div>
+    </div>
+
+    <div id="quiz-modal" class="hidden fixed inset-0 bg-slate-900 z-50 flex flex-col">
+        <!-- Quiz interface injected via JS -->
+    </div>
+
+    <!-- --- JAVASCRIPT LOGIC --- -->
+    <script>
+        // --- DATA & STATE MANAGEMENT ---
+        
+        const RANKS = [
+            { name: "Wanderer", minLvl: 1 },
+            { name: "Ronin", minLvl: 3 },
+            { name: "Ashigaru", minLvl: 5 },
+            { name: "Samurai", minLvl: 10 },
+            { name: "Daimyo", minLvl: 20 },
+            { name: "Shogun", minLvl: 50 }
+        ];
+
+        const KANA_DATA = {
+            hiragana: [
+                { char: 'あ', romaji: 'a' }, { char: 'い', romaji: 'i' }, { char: 'う', romaji: 'u' }, { char: 'え', romaji: 'e' }, { char: 'お', romaji: 'o' },
+                { char: 'か', romaji: 'ka' }, { char: 'き', romaji: 'ki' }, { char: 'く', romaji: 'ku' }, { char: 'け', romaji: 'ke' }, { char: 'こ', romaji: 'ko' },
+                { char: 'さ', romaji: 'sa' }, { char: 'し', romaji: 'shi' }, { char: 'す', romaji: 'su' }, { char: 'せ', romaji: 'se' }, { char: 'そ', romaji: 'so' },
+                { char: 'た', romaji: 'ta' }, { char: 'ち', romaji: 'chi' }, { char: 'つ', romaji: 'tsu' }, { char: 'て', romaji: 'te' }, { char: 'と', romaji: 'to' },
+                { char: 'な', romaji: 'na' }, { char: 'に', romaji: 'ni' }, { char: 'ぬ', romaji: 'nu' }, { char: 'ね', romaji: 'ne' }, { char: 'の', romaji: 'no' },
+                { char: 'は', romaji: 'ha' }, { char: 'ひ', romaji: 'hi' }, { char: 'ふ', romaji: 'fu' }, { char: 'へ', romaji: 'he' }, { char: 'ほ', romaji: 'ho' },
+                { char: 'ま', romaji: 'ma' }, { char: 'み', romaji: 'mi' }, { char: 'む', romaji: 'mu' }, { char: 'め', romaji: 'me' }, { char: 'も', romaji: 'mo' },
+                { char: 'や', romaji: 'ya' }, { char: 'ゆ', romaji: 'yu' }, { char: 'よ', romaji: 'yo' },
+                { char: 'ら', romaji: 'ra' }, { char: 'り', romaji: 'ri' }, { char: 'る', romaji: 'ru' }, { char: 'れ', romaji: 're' }, { char: 'ろ', romaji: 'ro' },
+                { char: 'わ', romaji: 'wa' }, { char: 'を', romaji: 'wo' }, { char: 'ん', romaji: 'n' }
+            ],
+            katakana: [
+                { char: 'ア', romaji: 'a' }, { char: 'イ', romaji: 'i' }, { char: 'ウ', romaji: 'u' }, { char: 'エ', romaji: 'e' }, { char: 'オ', romaji: 'o' },
+                // ... (abbreviated for this MVP, but logic supports full set)
+                { char: 'カ', romaji: 'ka' }, { char: 'キ', romaji: 'ki' }, { char: 'ク', romaji: 'ku' }, { char: 'ケ', romaji: 'ke' }, { char: 'コ', romaji: 'ko' }
+            ]
+        };
+
+        const VOCAB_DATA = [
+            { jp: 'こんにちは', romaji: 'Konnichiwa', en: 'Hello', category: 'Greetings' },
+            { jp: 'ありがとう', romaji: 'Arigatou', en: 'Thank you', category: 'Greetings' },
+            { jp: 'ねこ', romaji: 'Neko', en: 'Cat', category: 'Animals' },
+            { jp: 'いぬ', romaji: 'Inu', en: 'Dog', category: 'Animals' },
+            { jp: 'みず', romaji: 'Mizu', en: 'Water', category: 'Food' },
+            { jp: 'ごはん', romaji: 'Gohan', en: 'Rice / Meal', category: 'Food' }
+        ];
+
+        const GRAMMAR_DATA = [
+            {
+                title: "Introduction to Particles: WA (は)",
+                level: "N5",
+                summary: "Marks the topic of the sentence.",
+                content: "In Japanese, 'wa' (written as は) is used to mark the topic of a sentence. It equates A to B. <br><br><strong>Structure:</strong> A は B です (A wa B desu) <br><strong>Meaning:</strong> A is B.<br><br><em>Example:</em> Watashi wa Tanaka desu (I am Tanaka)."
+            },
+            {
+                title: "The Copula: DESU (です)",
+                level: "N5",
+                summary: "Polite way to say 'is', 'am', or 'are'.",
+                content: "To make a sentence polite, we end it with 'desu'. It acts like 'to be' in English. <br><br><em>Example:</em> Kore wa pen desu (This is a pen)."
+            },
+            {
+                title: "Question Particle: KA (か)",
+                level: "N5",
+                summary: "Turns a sentence into a question.",
+                content: "Japanese doesn't use a question mark always. Instead, you add 'ka' at the end of a sentence to make it a question. <br><br><em>Example:</em> Genki desu ka? (Are you well?)"
+            }
+        ];
+
+        const QUESTS_DATA = [
+            { id: 1, title: "Kana Master", desc: "Flip 10 Kana cards", xp: 50, progress: 0, target: 10 },
+            { id: 2, title: "Scholar", desc: "Read 1 Grammar Rule", xp: 100, progress: 0, target: 1 },
+            { id: 3, title: "Warrior", desc: "Score 100% on a Quiz", xp: 150, progress: 0, target: 1 }
+        ];
+
+        class App {
+            constructor() {
+                this.state = this.loadState() || {
+                    xp: 0,
+                    level: 1,
+                    rank: "Wanderer",
+                    streak: 1,
+                    lastLogin: new Date().toDateString(),
+                    quests: JSON.parse(JSON.stringify(QUESTS_DATA))
+                };
+                
+                // Streak Logic
+                const today = new Date().toDateString();
+                if (this.state.lastLogin !== today) {
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    if (this.state.lastLogin === yesterday.toDateString()) {
+                        this.state.streak++;
+                    } else {
+                        this.state.streak = 1; // Reset if broken
+                    }
+                    this.state.lastLogin = today;
+                    // Reset quests daily
+                    this.state.quests = JSON.parse(JSON.stringify(QUESTS_DATA)); 
+                    this.saveState();
+                }
+
+                this.init();
+            }
+
+            loadState() {
+                const saved = localStorage.getItem('gojapan_save');
+                return saved ? JSON.parse(saved) : null;
+            }
+
+            saveState() {
+                localStorage.setItem('gojapan_save', JSON.stringify(this.state));
+                this.updateHeader();
+            }
+
+            addXP(amount) {
+                this.state.xp += amount;
+                const requiredXP = this.state.level * 100;
+                
+                if (this.state.xp >= requiredXP) {
+                    this.state.xp -= requiredXP;
+                    this.state.level++;
+                    this.updateRank();
+                    this.showModal('level-up-modal');
+                    document.getElementById('modal-new-level').innerText = this.state.level;
+                    this.playSound('levelup');
+                }
+                this.saveState();
+            }
+
+            updateRank() {
+                // Find highest rank user qualifies for
+                const newRank = RANKS.slice().reverse().find(r => this.state.level >= r.minLvl);
+                if (newRank) this.state.rank = newRank.name;
+            }
+
+            updateHeader() {
+                const requiredXP = this.state.level * 100;
+                const percentage = (this.state.xp / requiredXP) * 100;
+                
+                // Desktop
+                document.getElementById('header-rank').innerText = this.state.rank;
+                document.getElementById('header-level').innerText = this.state.level;
+                document.getElementById('header-xp').innerText = this.state.xp;
+                document.getElementById('header-next-xp').innerText = requiredXP;
+                document.getElementById('header-streak').innerText = this.state.streak;
+                document.getElementById('xp-bar-fill').style.width = `${percentage}%`;
+
+                // Mobile
+                document.getElementById('mobile-rank').innerText = this.state.rank;
+                document.getElementById('mobile-level').innerText = this.state.level;
+                document.getElementById('mobile-xp-bar-fill').style.width = `${percentage}%`;
+
+                // Quest Badge
+                const activeQuests = this.state.quests.filter(q => q.progress < q.target).length;
+                const badge = document.getElementById('quest-badge');
+                badge.innerText = activeQuests;
+                if(activeQuests === 0) badge.classList.add('hidden');
+            }
+
+            updateQuestProgress(questId, amount) {
+                const quest = this.state.quests.find(q => q.id === questId);
+                if (quest && quest.progress < quest.target) {
+                    quest.progress += amount;
+                    if (quest.progress >= quest.target) {
+                        this.addXP(quest.xp);
+                        // Optional: Show notification "Quest Complete"
+                    }
+                    this.saveState();
+                }
+            }
+
+            playSound(type) {
+                // Placeholder for sound effects
+                // In a real app, use Audio() objects
+                console.log(`Playing sound: ${type}`);
+            }
+
+            // --- UI RENDERING ---
+
+            init() {
+                this.updateHeader();
+                this.navigate('dashboard');
+                lucide.createIcons();
+            }
+
+            navigate(page) {
+                const main = document.getElementById('main-content');
+                main.innerHTML = ''; // Clear content
+                
+                // Update active nav state
+                document.querySelectorAll('.nav-btn').forEach(btn => {
+                    if (btn.dataset.target === page) {
+                        btn.classList.add('bg-red-50', 'text-red-500', 'font-semibold');
+                        btn.classList.remove('text-slate-600');
+                    } else {
+                        btn.classList.remove('bg-red-50', 'text-red-500', 'font-semibold');
+                        btn.classList.add('text-slate-600');
+                    }
+                });
+
+                // Mobile logic active state (simplified)
+                
+                switch(page) {
+                    case 'dashboard': this.renderDashboard(main); break;
+                    case 'kana': this.renderKana(main); break;
+                    case 'vocab': this.renderVocab(main); break;
+                    case 'grammar': this.renderGrammar(main); break;
+                    case 'quests': this.renderQuests(main); break;
+                    case 'profile': this.renderProfile(main); break;
+                    case 'quiz': this.renderQuizSetup(main); break;
+                }
+                
+                lucide.createIcons();
+            }
+
+            renderDashboard(container) {
+                container.innerHTML = `
+                    <div class="animate-slide-in">
+                        <div class="mb-8">
+                            <h1 class="text-3xl font-bold text-slate-800">Welcome back, ${this.state.rank}! 👋</h1>
+                            <p class="text-slate-500">Ready to continue your Japanese journey?</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            <!-- Hero Card -->
+                            <div class="md:col-span-2 bg-gradient-to-r from-red-500 to-pink-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden group cursor-pointer" onclick="app.navigate('kana')">
+                                <div class="relative z-10">
+                                    <h3 class="font-bold text-2xl mb-2">Daily Kana Practice</h3>
+                                    <p class="opacity-90 mb-4">Master the basics of Hiragana & Katakana.</p>
+                                    <button class="bg-white text-red-500 px-4 py-2 rounded-lg font-bold text-sm hover:bg-red-50 transition">Start Now</button>
+                                </div>
+                                <i data-lucide="grid-3x3" class="absolute -right-4 -bottom-4 w-32 h-32 opacity-20 group-hover:scale-110 transition-transform"></i>
+                            </div>
+
+                            <!-- Streak Card -->
+                            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-center items-center text-center">
+                                <i data-lucide="flame" class="w-12 h-12 text-orange-500 mb-2"></i>
+                                <div class="text-4xl font-bold text-slate-800 mb-1">${this.state.streak}</div>
+                                <div class="text-xs text-slate-400 uppercase font-bold tracking-wider">Day Streak</div>
+                            </div>
+                        </div>
+
+                        <h2 class="text-xl font-bold text-slate-800 mb-4">Quick Actions</h2>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <button onclick="app.navigate('vocab')" class="p-4 bg-white rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition text-left group">
+                                <div class="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center mb-3 group-hover:bg-blue-200 transition">
+                                    <i data-lucide="book-a" class="text-blue-600 w-5 h-5"></i>
+                                </div>
+                                <div class="font-bold text-slate-700">Vocabulary</div>
+                                <div class="text-xs text-slate-400">12 words learned</div>
+                            </button>
+                            <button onclick="app.navigate('quiz')" class="p-4 bg-white rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition text-left group">
+                                <div class="bg-purple-100 w-10 h-10 rounded-lg flex items-center justify-center mb-3 group-hover:bg-purple-200 transition">
+                                    <i data-lucide="swords" class="text-purple-600 w-5 h-5"></i>
+                                </div>
+                                <div class="font-bold text-slate-700">Battle Mode</div>
+                                <div class="text-xs text-slate-400">Test skills</div>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderKana(container) {
+                let activeTab = 'hiragana';
+                
+                const renderGrid = (type) => {
+                    const grid = document.getElementById('kana-grid');
+                    grid.innerHTML = KANA_DATA[type].map((k, index) => `
+                        <div class="kana-card h-24" onclick="this.classList.toggle('flipped'); app.updateQuestProgress(1, 1); app.playSound('flip')">
+                            <div class="kana-card-inner">
+                                <div class="kana-front">
+                                    <span class="text-3xl font-bold text-slate-800 jp-font">${k.char}</span>
+                                </div>
+                                <div class="kana-back">
+                                    <span class="text-xl font-bold">${k.romaji}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                };
+
+                container.innerHTML = `
+                    <div class="animate-slide-in h-full flex flex-col">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-slate-800">Kana Dojo</h2>
+                            <div class="bg-white rounded-lg p-1 border border-slate-200 flex">
+                                <button id="tab-h" class="px-4 py-1.5 rounded-md text-sm font-bold bg-red-50 text-red-600 transition" onclick="app.switchKanaTab('hiragana')">Hiragana</button>
+                                <button id="tab-k" class="px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:bg-slate-50 transition" onclick="app.switchKanaTab('katakana')">Katakana</button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 overflow-y-auto pb-20" id="kana-grid">
+                            <!-- Grid Content -->
+                        </div>
+                    </div>
+                `;
+                
+                // Expose helper to switch tabs
+                this.switchKanaTab = (type) => {
+                    activeTab = type;
+                    document.getElementById('tab-h').className = type === 'hiragana' ? "px-4 py-1.5 rounded-md text-sm font-bold bg-red-50 text-red-600 transition" : "px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:bg-slate-50 transition";
+                    document.getElementById('tab-k').className = type === 'katakana' ? "px-4 py-1.5 rounded-md text-sm font-bold bg-red-50 text-red-600 transition" : "px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:bg-slate-50 transition";
+                    renderGrid(type);
+                };
+
+                renderGrid('hiragana');
+            }
+
+            renderVocab(container) {
+                container.innerHTML = `
+                    <div class="animate-slide-in">
+                        <h2 class="text-2xl font-bold text-slate-800 mb-6">Vocabulary Library</h2>
+                        <div class="space-y-4">
+                            ${VOCAB_DATA.map(word => `
+                                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center hover:shadow-md transition cursor-pointer" onclick="app.speak('${word.jp}')">
+                                    <div>
+                                        <div class="text-xs font-bold text-red-400 uppercase tracking-wider mb-1">${word.category}</div>
+                                        <div class="text-xl font-bold text-slate-800 jp-font">${word.jp}</div>
+                                        <div class="text-sm text-slate-400">${word.romaji}</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-lg font-semibold text-slate-700">${word.en}</div>
+                                        <i data-lucide="volume-2" class="w-4 h-4 text-slate-300 ml-auto mt-2"></i>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            speak(text) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'ja-JP';
+                window.speechSynthesis.speak(utterance);
+            }
+
+            renderGrammar(container) {
+                container.innerHTML = `
+                    <div class="animate-slide-in">
+                        <h2 class="text-2xl font-bold text-slate-800 mb-6">Grammar Guide (N5)</h2>
+                        <div class="space-y-4">
+                            ${GRAMMAR_DATA.map((rule, idx) => `
+                                <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                                    <div class="p-4 cursor-pointer flex justify-between items-center bg-slate-50 hover:bg-slate-100 transition" onclick="document.getElementById('rule-${idx}').classList.toggle('hidden'); app.updateQuestProgress(2, 1);">
+                                        <div>
+                                            <span class="bg-slate-200 text-slate-600 text-[10px] px-2 py-1 rounded font-bold mr-2">${rule.level}</span>
+                                            <span class="font-bold text-slate-700">${rule.title}</span>
+                                        </div>
+                                        <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400"></i>
+                                    </div>
+                                    <div id="rule-${idx}" class="hidden p-4 border-t border-slate-100 text-slate-600 text-sm leading-relaxed">
+                                        <p class="mb-2 italic text-slate-400">${rule.summary}</p>
+                                        <div class="prose prose-sm">${rule.content}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderQuests(container) {
+                container.innerHTML = `
+                    <div class="animate-slide-in">
+                        <h2 class="text-2xl font-bold text-slate-800 mb-6">Daily Quests</h2>
+                        <div class="space-y-4">
+                            ${this.state.quests.map(quest => {
+                                const percent = Math.min(100, (quest.progress / quest.target) * 100);
+                                const isComplete = quest.progress >= quest.target;
+                                return `
+                                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100 relative overflow-hidden">
+                                    ${isComplete ? '<div class="absolute top-0 right-0 bg-green-500 text-white text-[10px] px-2 py-1 rounded-bl-lg font-bold">COMPLETED</div>' : ''}
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div>
+                                            <h3 class="font-bold text-slate-800">${quest.title}</h3>
+                                            <p class="text-sm text-slate-500">${quest.desc}</p>
+                                        </div>
+                                        <div class="flex items-center gap-1 text-yellow-500 font-bold text-sm">
+                                            <span>+${quest.xp} XP</span>
+                                        </div>
+                                    </div>
+                                    <div class="w-full bg-slate-100 rounded-full h-2 mt-2">
+                                        <div class="bg-green-500 h-2 rounded-full transition-all duration-500" style="width: ${percent}%"></div>
+                                    </div>
+                                    <div class="text-right text-xs text-slate-400 mt-1">${quest.progress} / ${quest.target}</div>
+                                </div>
+                            `}).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderQuizSetup(container) {
+                container.innerHTML = `
+                    <div class="animate-slide-in h-full flex flex-col items-center justify-center text-center p-6">
+                        <div class="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mb-6 text-red-500">
+                            <i data-lucide="swords" class="w-12 h-12"></i>
+                        </div>
+                        <h2 class="text-3xl font-bold text-slate-800 mb-2">Battle Mode</h2>
+                        <p class="text-slate-500 mb-8 max-w-sm">Test your skills in a quick fire quiz. Gain XP for every correct answer!</p>
+                        
+                        <button onclick="app.startQuiz()" class="bg-red-500 text-white font-bold py-4 px-12 rounded-full shadow-lg hover:bg-red-600 hover:scale-105 transition transform">
+                            Start Battle
+                        </button>
+                    </div>
+                `;
+            }
+
+            startQuiz() {
+                // Generate simple quiz questions from Vocab data
+                const questions = VOCAB_DATA.map(v => ({
+                    question: `What is "${v.en}" in Japanese?`,
+                    correct: v.jp,
+                    romaji: v.romaji,
+                    options: this.shuffleArray([v.jp, ...VOCAB_DATA.filter(x => x !== v).map(x => x.jp).slice(0, 3)])
+                })).slice(0, 5); // Limit to 5 questions
+
+                let currentQ = 0;
+                let score = 0;
+
+                const modal = document.getElementById('quiz-modal');
+                modal.classList.remove('hidden');
+
+                const renderQuestion = () => {
+                    if (currentQ >= questions.length) {
+                        // End Quiz
+                        const finalScore = Math.round((score / questions.length) * 100);
+                        const earnedXP = score * 10;
+                        this.addXP(earnedXP);
+                        if (finalScore === 100) this.updateQuestProgress(3, 1);
+
+                        modal.innerHTML = `
+                            <div class="flex-1 flex flex-col items-center justify-center p-8 text-center text-white">
+                                <h2 class="text-4xl font-bold mb-4">Battle Finished!</h2>
+                                <p class="text-xl mb-8">Score: ${score} / ${questions.length}</p>
+                                <div class="text-yellow-400 font-bold text-2xl mb-8">+${earnedXP} XP</div>
+                                <button onclick="location.reload()" class="bg-white text-slate-900 px-8 py-3 rounded-full font-bold">Return Home</button>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    const q = questions[currentQ];
+                    modal.innerHTML = `
+                        <div class="flex-1 flex flex-col items-center justify-center p-6 max-w-lg mx-auto w-full">
+                            <div class="w-full flex justify-between text-slate-400 text-sm mb-8">
+                                <span>Question ${currentQ + 1} / ${questions.length}</span>
+                                <button onclick="location.reload()" class="hover:text-white">Exit</button>
+                            </div>
+                            
+                            <h3 class="text-2xl font-bold text-white mb-8 text-center">${q.question}</h3>
+                            
+                            <div class="grid grid-cols-1 gap-4 w-full">
+                                ${q.options.map(opt => `
+                                    <button class="quiz-opt bg-slate-800 text-white p-4 rounded-xl font-bold hover:bg-slate-700 transition border-2 border-transparent jp-font text-lg" onclick="app.checkAnswer(this, '${opt}', '${q.correct}')">
+                                        ${opt}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                };
+
+                this.checkAnswer = (btn, selected, correct) => {
+                    const allBtns = document.querySelectorAll('.quiz-opt');
+                    allBtns.forEach(b => b.disabled = true);
+
+                    if (selected === correct) {
+                        btn.classList.add('border-green-500', 'bg-green-900');
+                        score++;
+                        this.playSound('correct');
+                    } else {
+                        btn.classList.add('border-red-500', 'bg-red-900');
+                        this.playSound('wrong');
+                    }
+
+                    setTimeout(() => {
+                        currentQ++;
+                        renderQuestion();
+                    }, 1000);
+                };
+
+                renderQuestion();
+            }
+
+            shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+
+            closeModal(id) {
+                document.getElementById(id).classList.add('hidden');
+            }
+            
+            toggleMobileMenu() {
+                // Simplified for this version
+                this.navigate('dashboard');
+            }
+
+            renderProfile(container) {
+                container.innerHTML = `
+                    <div class="animate-slide-in">
+                        <div class="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 text-center mb-6">
+                            <div class="w-24 h-24 bg-slate-200 rounded-full mx-auto mb-4 overflow-hidden border-4 border-white shadow-lg">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Avatar" class="w-full h-full object-cover">
+                            </div>
+                            <h2 class="text-2xl font-bold text-slate-800">${this.state.rank}</h2>
+                            <p class="text-slate-500">Level ${this.state.level} Student</p>
+                        </div>
+                        
+                        <div class="bg-slate-800 text-white rounded-xl p-6 mb-6">
+                            <h3 class="font-bold mb-4 border-b border-slate-700 pb-2">Statistics</h3>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-slate-400">Total XP</span>
+                                <span class="font-bold text-yellow-400">${this.state.xp}</span>
+                            </div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-slate-400">Current Streak</span>
+                                <span class="font-bold">${this.state.streak} Days</span>
+                            </div>
+                        </div>
+
+                        <button onclick="localStorage.clear(); location.reload();" class="w-full border-2 border-red-100 text-red-400 py-3 rounded-xl font-bold hover:bg-red-50 transition text-sm">
+                            Reset Progress
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize App
+        const app = new App();
+
+    </script>
+</body>
+</html>
