@@ -191,7 +191,7 @@
 <body class="flex flex-col h-screen">
 
     <!-- --- HEADER / TOP BAR --- -->
-    <header class="bg-slate-900 text-white p-4 shadow-lg z-20">
+    <header class="bg-slate-900 text-white p-4 shadow-lg z-20 flex-none">
         <div class="max-w-6xl mx-auto flex items-center justify-between">
             <!-- Logo -->
             <div class="flex items-center gap-2 cursor-pointer" onclick="app.navigate('dashboard')">
@@ -245,7 +245,7 @@
     <div class="flex flex-1 overflow-hidden relative">
         
         <!-- Sidebar Navigation (Desktop) -->
-        <nav class="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 shadow-sm z-10">
+        <nav class="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 shadow-sm z-10 flex-none">
             <div class="p-6">
                 <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Learning Path</h2>
                 <ul class="space-y-2">
@@ -302,7 +302,8 @@
         </nav>
 
         <!-- Content Area -->
-        <main class="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 relative" id="main-content">
+        <!-- CHANGED: Removed p-4 md:p-8 and overflow-y-auto from here to handle per-page layout -->
+        <main class="flex-1 overflow-hidden relative bg-slate-50 flex flex-col" id="main-content">
             <!-- Dynamic Content Injected Here -->
         </main>
 
@@ -623,6 +624,7 @@
 
             renderDashboard(container) {
                 container.innerHTML = `
+                <div class="h-full overflow-y-auto p-4 md:p-8">
                     <div class="animate-slide-in">
                         <div class="mb-8">
                             <h1 class="text-3xl font-bold text-slate-800">Welcome back, ${this.state.rank}! 👋</h1>
@@ -669,7 +671,7 @@
                             </button>
                         </div>
                     </div>
-                `;
+                </div>`;
             }
 
             renderKana(container) {
@@ -692,6 +694,7 @@
                 };
 
                 container.innerHTML = `
+                <div class="h-full overflow-y-auto p-4 md:p-8">
                     <div class="animate-slide-in h-full flex flex-col">
                         <div class="flex justify-between items-center mb-6">
                             <h2 class="text-2xl font-bold text-slate-800">Kana Dojo</h2>
@@ -700,11 +703,11 @@
                                 <button id="tab-k" class="px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:bg-slate-50 transition" onclick="app.switchKanaTab('katakana')">Katakana</button>
                             </div>
                         </div>
-                        <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 overflow-y-auto pb-20" id="kana-grid">
+                        <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 pb-20" id="kana-grid">
                             <!-- Grid Content -->
                         </div>
                     </div>
-                `;
+                </div>`;
                 
                 this.switchKanaTab = (type) => {
                     activeTab = type;
@@ -718,6 +721,7 @@
 
             renderVocab(container) {
                 container.innerHTML = `
+                <div class="h-full overflow-y-auto p-4 md:p-8">
                     <div class="animate-slide-in">
                         <div class="flex items-center gap-2 mb-6">
                             <h2 class="text-2xl font-bold text-slate-800">Vocabulary Library</h2>
@@ -744,7 +748,7 @@
                             `).join('')}
                         </div>
                     </div>
-                `;
+                </div>`;
             }
 
             async speak(text, element) {
@@ -752,33 +756,46 @@
                 const icon = element.querySelector('i[data-lucide="volume-2"]');
                 icon.classList.add('animate-pulse', 'text-red-600');
                 
-                // Try Gemini TTS First
-                const audioData = await gemini.generateSpeech(text);
+                // CRITICAL FIX: Create/Resume AudioContext IMMEDIATELY on click to capture user gesture
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
                 
-                if (audioData) {
-                    // Play Gemini Audio
-                    const binaryString = window.atob(audioData);
-                    const bytes = new Uint8Array(binaryString.length);
-                    for (let i = 0; i < binaryString.length; i++) {
-                        bytes[i] = binaryString.charCodeAt(i);
-                    }
-                    const pcm16 = bytes.buffer;
+                const audioContext = new AudioContext({ sampleRate: 24000 });
+                // If the context is suspended (common in some browsers), resume it
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+
+                try {
+                    // Try Gemini TTS
+                    const audioData = await gemini.generateSpeech(text);
                     
-                    // Convert raw PCM to AudioContext playback
-                    const audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
-                    const audioBuffer = audioContext.createBuffer(1, pcm16.byteLength / 2, 24000);
-                    const channelData = audioBuffer.getChannelData(0);
-                    const int16Array = new Int16Array(pcm16);
-                    for (let i = 0; i < int16Array.length; i++) {
-                        channelData[i] = int16Array[i] / 32768.0;
+                    if (audioData) {
+                        // Play Gemini Audio
+                        const binaryString = window.atob(audioData);
+                        const bytes = new Uint8Array(binaryString.length);
+                        for (let i = 0; i < binaryString.length; i++) {
+                            bytes[i] = binaryString.charCodeAt(i);
+                        }
+                        const pcm16 = bytes.buffer;
+                        
+                        const audioBuffer = audioContext.createBuffer(1, pcm16.byteLength / 2, 24000);
+                        const channelData = audioBuffer.getChannelData(0);
+                        const int16Array = new Int16Array(pcm16);
+                        for (let i = 0; i < int16Array.length; i++) {
+                            channelData[i] = int16Array[i] / 32768.0;
+                        }
+                        
+                        const source = audioContext.createBufferSource();
+                        source.buffer = audioBuffer;
+                        source.connect(audioContext.destination);
+                        source.start();
+                        source.onended = () => icon.classList.remove('animate-pulse', 'text-red-600');
+                    } else {
+                        throw new Error("No audio data");
                     }
-                    
-                    const source = audioContext.createBufferSource();
-                    source.buffer = audioBuffer;
-                    source.connect(audioContext.destination);
-                    source.start();
-                    source.onended = () => icon.classList.remove('animate-pulse', 'text-red-600');
-                } else {
+                } catch (e) {
+                    console.log("TTS Fallback triggered:", e);
                     // Fallback to Browser API
                     const utterance = new SpeechSynthesisUtterance(text);
                     utterance.lang = 'ja-JP';
@@ -789,6 +806,7 @@
 
             renderGrammar(container) {
                 container.innerHTML = `
+                <div class="h-full overflow-y-auto p-4 md:p-8">
                     <div class="animate-slide-in">
                         <h2 class="text-2xl font-bold text-slate-800 mb-6">Grammar Guide (N5)</h2>
                         <div class="space-y-4">
@@ -817,7 +835,7 @@
                             `).join('')}
                         </div>
                     </div>
-                `;
+                </div>`;
             }
 
             async explainGrammar(topic, idx) {
@@ -850,6 +868,7 @@
             }
 
             renderSensei(container) {
+                // FIXED: Used simple flex-col structure without wrapping in scrolled div
                 container.innerHTML = `
                     <div class="flex flex-col h-full animate-slide-in">
                         <div class="flex-none p-4 border-b border-slate-200 bg-white">
@@ -942,6 +961,7 @@
 
             renderQuests(container) {
                 container.innerHTML = `
+                <div class="h-full overflow-y-auto p-4 md:p-8">
                     <div class="animate-slide-in">
                         <h2 class="text-2xl font-bold text-slate-800 mb-6">Daily Quests</h2>
                         <div class="space-y-4">
@@ -968,11 +988,12 @@
                             `}).join('')}
                         </div>
                     </div>
-                `;
+                </div>`;
             }
 
             renderQuizSetup(container) {
                 container.innerHTML = `
+                <div class="h-full overflow-y-auto p-4 md:p-8">
                     <div class="animate-slide-in h-full flex flex-col items-center justify-center text-center p-6">
                         <div class="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mb-6 text-red-500">
                             <i data-lucide="swords" class="w-12 h-12"></i>
@@ -984,7 +1005,7 @@
                             Start Battle
                         </button>
                     </div>
-                `;
+                </div>`;
             }
 
             startQuiz() {
@@ -1083,6 +1104,7 @@
 
             renderProfile(container) {
                 container.innerHTML = `
+                <div class="h-full overflow-y-auto p-4 md:p-8">
                     <div class="animate-slide-in">
                         <div class="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 text-center mb-6">
                             <div class="w-24 h-24 bg-slate-200 rounded-full mx-auto mb-4 overflow-hidden border-4 border-white shadow-lg">
@@ -1108,7 +1130,7 @@
                             Reset Progress
                         </button>
                     </div>
-                `;
+                </div>`;
             }
         }
 
