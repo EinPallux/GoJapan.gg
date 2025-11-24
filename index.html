@@ -10,6 +10,8 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Google Fonts: Noto Sans JP for Japanese text -->
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Markdown Parser for AI responses -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     
     <style>
         /* --- CUSTOM CSS SECTION --- */
@@ -50,6 +52,10 @@
             75% { transform: translateX(-5px); }
             100% { transform: translateX(0); }
         }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
 
         .animate-slide-in {
             animation: slideIn 0.4s ease-out forwards;
@@ -57,6 +63,10 @@
 
         .animate-shake {
             animation: shake 0.3s ease-in-out;
+        }
+        
+        .animate-spin-slow {
+            animation: spin 2s linear infinite;
         }
 
         .level-up-badge {
@@ -117,6 +127,42 @@
             transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
+        /* Chat Styles */
+        .chat-bubble {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            position: relative;
+        }
+        .chat-user {
+            background-color: #FF4E50;
+            color: white;
+            border-bottom-right-radius: 4px;
+            margin-left: auto;
+        }
+        .chat-ai {
+            background-color: white;
+            color: #334155;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-right: auto;
+        }
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background-color: #cbd5e1;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
         /* Custom Scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
@@ -137,6 +183,9 @@
             background-color: rgba(0,0,0,0.5);
             backdrop-filter: blur(4px);
         }
+        
+        .markdown-prose p { margin-bottom: 0.5em; }
+        .markdown-prose strong { color: #FF4E50; font-weight: 700; }
     </style>
 </head>
 <body class="flex flex-col h-screen">
@@ -207,6 +256,13 @@
                         </button>
                     </li>
                     <li>
+                        <button onclick="app.navigate('sensei')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors group" data-target="sensei">
+                            <i data-lucide="bot" class="w-5 h-5 text-purple-500 group-hover:animate-bounce"></i>
+                            <span class="font-bold text-purple-600">AI Sensei</span>
+                            <span class="ml-auto text-[10px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded border border-purple-200">NEW</span>
+                        </button>
+                    </li>
+                    <li>
                         <button onclick="app.navigate('kana')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors" data-target="kana">
                             <i data-lucide="grid-3x3" class="w-5 h-5"></i>
                             Kana Dojo
@@ -246,7 +302,7 @@
         </nav>
 
         <!-- Content Area -->
-        <main class="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8" id="main-content">
+        <main class="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 relative" id="main-content">
             <!-- Dynamic Content Injected Here -->
         </main>
 
@@ -258,9 +314,9 @@
             <i data-lucide="layout-dashboard" class="w-6 h-6"></i>
             <span class="text-[10px] font-bold">Home</span>
         </button>
-        <button onclick="app.navigate('kana')" class="flex flex-col items-center gap-1 text-slate-400">
-            <i data-lucide="grid-3x3" class="w-6 h-6"></i>
-            <span class="text-[10px] font-bold">Kana</span>
+        <button onclick="app.navigate('sensei')" class="flex flex-col items-center gap-1 text-purple-500">
+            <i data-lucide="bot" class="w-6 h-6"></i>
+            <span class="text-[10px] font-bold">Sensei</span>
         </button>
         <button onclick="app.navigate('quiz')" class="flex flex-col items-center justify-center -mt-8 bg-red-500 text-white w-14 h-14 rounded-full shadow-lg border-4 border-slate-50">
             <i data-lucide="swords" class="w-6 h-6"></i>
@@ -294,6 +350,73 @@
 
     <!-- --- JAVASCRIPT LOGIC --- -->
     <script>
+        const apiKey = ""; // API Key Injected by Environment
+
+        // --- GEMINI API SERVICE ---
+        class GeminiService {
+            constructor() {
+                this.baseUrl = "https://generativelanguage.googleapis.com/v1beta/models";
+                this.textModel = "gemini-2.5-flash-preview-09-2025";
+                this.ttsModel = "gemini-2.5-flash-preview-tts";
+            }
+
+            async generateText(prompt, systemInstruction = "You are a helpful Japanese tutor.") {
+                const url = `${this.baseUrl}/${this.textModel}:generateContent?key=${apiKey}`;
+                const payload = {
+                    contents: [{ parts: [{ text: prompt }] }],
+                    systemInstruction: { parts: [{ text: systemInstruction }] }
+                };
+
+                return this._fetchWithRetry(url, payload);
+            }
+
+            async generateSpeech(text) {
+                const url = `${this.baseUrl}/${this.ttsModel}:generateContent?key=${apiKey}`;
+                const payload = {
+                    contents: [{ parts: [{ text: text }] }],
+                    generationConfig: {
+                        responseModalities: ["AUDIO"],
+                        speechConfig: {
+                            voiceConfig: {
+                                prebuiltVoiceConfig: { voiceName: "Kore" } // Using Kore (Female-sounding, good for clarity)
+                            }
+                        }
+                    }
+                };
+
+                try {
+                    const data = await this._fetchWithRetry(url, payload);
+                    if (data.candidates && data.candidates[0].content.parts[0].inlineData) {
+                        return data.candidates[0].content.parts[0].inlineData.data;
+                    }
+                    throw new Error("No audio data returned");
+                } catch (e) {
+                    console.error("TTS Error:", e);
+                    return null;
+                }
+            }
+
+            async _fetchWithRetry(url, payload, retries = 3) {
+                for (let i = 0; i < retries; i++) {
+                    try {
+                        const response = await fetch(url, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(payload)
+                        });
+                        
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        return await response.json();
+                    } catch (e) {
+                        if (i === retries - 1) throw e;
+                        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i))); // Exponential backoff
+                    }
+                }
+            }
+        }
+
+        const gemini = new GeminiService();
+
         // --- DATA & STATE MANAGEMENT ---
         
         const RANKS = [
@@ -320,7 +443,6 @@
             ],
             katakana: [
                 { char: 'ア', romaji: 'a' }, { char: 'イ', romaji: 'i' }, { char: 'ウ', romaji: 'u' }, { char: 'エ', romaji: 'e' }, { char: 'オ', romaji: 'o' },
-                // ... (abbreviated for this MVP, but logic supports full set)
                 { char: 'カ', romaji: 'ka' }, { char: 'キ', romaji: 'ki' }, { char: 'ク', romaji: 'ku' }, { char: 'ケ', romaji: 'ke' }, { char: 'コ', romaji: 'ko' }
             ]
         };
@@ -369,7 +491,8 @@
                     rank: "Wanderer",
                     streak: 1,
                     lastLogin: new Date().toDateString(),
-                    quests: JSON.parse(JSON.stringify(QUESTS_DATA))
+                    quests: JSON.parse(JSON.stringify(QUESTS_DATA)),
+                    chatHistory: [] // Store AI Sensei chats
                 };
                 
                 // Streak Logic
@@ -417,7 +540,6 @@
             }
 
             updateRank() {
-                // Find highest rank user qualifies for
                 const newRank = RANKS.slice().reverse().find(r => this.state.level >= r.minLvl);
                 if (newRank) this.state.rank = newRank.name;
             }
@@ -452,7 +574,6 @@
                     quest.progress += amount;
                     if (quest.progress >= quest.target) {
                         this.addXP(quest.xp);
-                        // Optional: Show notification "Quest Complete"
                     }
                     this.saveState();
                 }
@@ -460,7 +581,6 @@
 
             playSound(type) {
                 // Placeholder for sound effects
-                // In a real app, use Audio() objects
                 console.log(`Playing sound: ${type}`);
             }
 
@@ -478,17 +598,15 @@
                 
                 // Update active nav state
                 document.querySelectorAll('.nav-btn').forEach(btn => {
-                    if (btn.dataset.target === page) {
-                        btn.classList.add('bg-red-50', 'text-red-500', 'font-semibold');
-                        btn.classList.remove('text-slate-600');
-                    } else {
-                        btn.classList.remove('bg-red-50', 'text-red-500', 'font-semibold');
-                        btn.classList.add('text-slate-600');
-                    }
+                    const isTarget = btn.dataset.target === page;
+                    // Reset styling
+                    btn.className = `nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                        isTarget 
+                        ? 'bg-red-50 text-red-500 font-semibold' 
+                        : 'text-slate-600 hover:bg-slate-50'
+                    }`;
                 });
 
-                // Mobile logic active state (simplified)
-                
                 switch(page) {
                     case 'dashboard': this.renderDashboard(main); break;
                     case 'kana': this.renderKana(main); break;
@@ -497,6 +615,7 @@
                     case 'quests': this.renderQuests(main); break;
                     case 'profile': this.renderProfile(main); break;
                     case 'quiz': this.renderQuizSetup(main); break;
+                    case 'sensei': this.renderSensei(main); break; // New Route
                 }
                 
                 lucide.createIcons();
@@ -512,13 +631,16 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                             <!-- Hero Card -->
-                            <div class="md:col-span-2 bg-gradient-to-r from-red-500 to-pink-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden group cursor-pointer" onclick="app.navigate('kana')">
+                            <div class="md:col-span-2 bg-gradient-to-r from-red-500 to-pink-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden group cursor-pointer" onclick="app.navigate('sensei')">
                                 <div class="relative z-10">
-                                    <h3 class="font-bold text-2xl mb-2">Daily Kana Practice</h3>
-                                    <p class="opacity-90 mb-4">Master the basics of Hiragana & Katakana.</p>
-                                    <button class="bg-white text-red-500 px-4 py-2 rounded-lg font-bold text-sm hover:bg-red-50 transition">Start Now</button>
+                                    <h3 class="font-bold text-2xl mb-2 flex items-center gap-2">
+                                        <i data-lucide="sparkles" class="w-5 h-5 text-yellow-300"></i>
+                                        Chat with Sensei AI
+                                    </h3>
+                                    <p class="opacity-90 mb-4 max-w-sm">Practice conversations with our new Gemini-powered AI tutor.</p>
+                                    <button class="bg-white text-red-500 px-4 py-2 rounded-lg font-bold text-sm hover:bg-red-50 transition">Start Chatting</button>
                                 </div>
-                                <i data-lucide="grid-3x3" class="absolute -right-4 -bottom-4 w-32 h-32 opacity-20 group-hover:scale-110 transition-transform"></i>
+                                <i data-lucide="bot" class="absolute -right-4 -bottom-4 w-32 h-32 opacity-20 group-hover:scale-110 transition-transform"></i>
                             </div>
 
                             <!-- Streak Card -->
@@ -536,7 +658,7 @@
                                     <i data-lucide="book-a" class="text-blue-600 w-5 h-5"></i>
                                 </div>
                                 <div class="font-bold text-slate-700">Vocabulary</div>
-                                <div class="text-xs text-slate-400">12 words learned</div>
+                                <div class="text-xs text-slate-400">Gemini Audio 🔊</div>
                             </button>
                             <button onclick="app.navigate('quiz')" class="p-4 bg-white rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition text-left group">
                                 <div class="bg-purple-100 w-10 h-10 rounded-lg flex items-center justify-center mb-3 group-hover:bg-purple-200 transition">
@@ -584,7 +706,6 @@
                     </div>
                 `;
                 
-                // Expose helper to switch tabs
                 this.switchKanaTab = (type) => {
                     activeTab = type;
                     document.getElementById('tab-h').className = type === 'hiragana' ? "px-4 py-1.5 rounded-md text-sm font-bold bg-red-50 text-red-600 transition" : "px-4 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:bg-slate-50 transition";
@@ -598,10 +719,15 @@
             renderVocab(container) {
                 container.innerHTML = `
                     <div class="animate-slide-in">
-                        <h2 class="text-2xl font-bold text-slate-800 mb-6">Vocabulary Library</h2>
+                        <div class="flex items-center gap-2 mb-6">
+                            <h2 class="text-2xl font-bold text-slate-800">Vocabulary Library</h2>
+                            <span class="bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded font-bold flex items-center gap-1">
+                                <i data-lucide="sparkles" class="w-3 h-3"></i> AI Audio
+                            </span>
+                        </div>
                         <div class="space-y-4">
                             ${VOCAB_DATA.map(word => `
-                                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center hover:shadow-md transition cursor-pointer" onclick="app.speak('${word.jp}')">
+                                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center hover:shadow-md transition cursor-pointer group" onclick="app.speak('${word.jp}', this)">
                                     <div>
                                         <div class="text-xs font-bold text-red-400 uppercase tracking-wider mb-1">${word.category}</div>
                                         <div class="text-xl font-bold text-slate-800 jp-font">${word.jp}</div>
@@ -609,7 +735,10 @@
                                     </div>
                                     <div class="text-right">
                                         <div class="text-lg font-semibold text-slate-700">${word.en}</div>
-                                        <i data-lucide="volume-2" class="w-4 h-4 text-slate-300 ml-auto mt-2"></i>
+                                        <div class="flex items-center justify-end mt-2 text-slate-300 group-hover:text-red-500 transition gap-1">
+                                            <span class="text-xs">Listen</span>
+                                            <i data-lucide="volume-2" class="w-4 h-4"></i>
+                                        </div>
                                     </div>
                                 </div>
                             `).join('')}
@@ -618,10 +747,44 @@
                 `;
             }
 
-            speak(text) {
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'ja-JP';
-                window.speechSynthesis.speak(utterance);
+            async speak(text, element) {
+                // Visual feedback
+                const icon = element.querySelector('i[data-lucide="volume-2"]');
+                icon.classList.add('animate-pulse', 'text-red-600');
+                
+                // Try Gemini TTS First
+                const audioData = await gemini.generateSpeech(text);
+                
+                if (audioData) {
+                    // Play Gemini Audio
+                    const binaryString = window.atob(audioData);
+                    const bytes = new Uint8Array(binaryString.length);
+                    for (let i = 0; i < binaryString.length; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                    }
+                    const pcm16 = bytes.buffer;
+                    
+                    // Convert raw PCM to AudioContext playback
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+                    const audioBuffer = audioContext.createBuffer(1, pcm16.byteLength / 2, 24000);
+                    const channelData = audioBuffer.getChannelData(0);
+                    const int16Array = new Int16Array(pcm16);
+                    for (let i = 0; i < int16Array.length; i++) {
+                        channelData[i] = int16Array[i] / 32768.0;
+                    }
+                    
+                    const source = audioContext.createBufferSource();
+                    source.buffer = audioBuffer;
+                    source.connect(audioContext.destination);
+                    source.start();
+                    source.onended = () => icon.classList.remove('animate-pulse', 'text-red-600');
+                } else {
+                    // Fallback to Browser API
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'ja-JP';
+                    utterance.onend = () => icon.classList.remove('animate-pulse', 'text-red-600');
+                    window.speechSynthesis.speak(utterance);
+                }
             }
 
             renderGrammar(container) {
@@ -638,15 +801,143 @@
                                         </div>
                                         <i data-lucide="chevron-down" class="w-5 h-5 text-slate-400"></i>
                                     </div>
-                                    <div id="rule-${idx}" class="hidden p-4 border-t border-slate-100 text-slate-600 text-sm leading-relaxed">
+                                    <div id="rule-${idx}" class="hidden p-4 border-t border-slate-100 text-slate-600 text-sm leading-relaxed relative">
                                         <p class="mb-2 italic text-slate-400">${rule.summary}</p>
-                                        <div class="prose prose-sm">${rule.content}</div>
+                                        <div class="prose prose-sm mb-4">${rule.content}</div>
+                                        
+                                        <!-- Gemini Explain Button -->
+                                        <div class="mt-4 pt-4 border-t border-slate-100" id="ai-area-${idx}">
+                                            <button onclick="app.explainGrammar('${rule.title}', ${idx})" class="flex items-center gap-2 text-purple-600 font-bold text-xs hover:text-purple-700 transition">
+                                                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                                                Explain with AI Sensei
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             `).join('')}
                         </div>
                     </div>
                 `;
+            }
+
+            async explainGrammar(topic, idx) {
+                const area = document.getElementById(`ai-area-${idx}`);
+                area.innerHTML = `
+                    <div class="flex items-center gap-2 text-purple-500 text-sm animate-pulse">
+                        <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                        Sensei is writing an explanation...
+                    </div>
+                `;
+                lucide.createIcons();
+
+                try {
+                    const prompt = `Explain the Japanese grammar point "${topic}" like I am 5 years old. Include one very simple example sentence with translation. Keep it short.`;
+                    const result = await gemini.generateText(prompt);
+                    const text = result.candidates[0].content.parts[0].text;
+                    
+                    area.innerHTML = `
+                        <div class="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                            <div class="flex items-center gap-2 mb-2 text-purple-700 font-bold text-xs uppercase tracking-wider">
+                                <i data-lucide="bot" class="w-4 h-4"></i> AI Explanation
+                            </div>
+                            <div class="markdown-prose text-slate-700">${marked.parse(text)}</div>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                } catch (e) {
+                    area.innerHTML = `<div class="text-red-500 text-xs">Sensei is busy. Try again later.</div>`;
+                }
+            }
+
+            renderSensei(container) {
+                container.innerHTML = `
+                    <div class="flex flex-col h-full animate-slide-in">
+                        <div class="flex-none p-4 border-b border-slate-200 bg-white">
+                            <div class="flex items-center gap-3">
+                                <div class="bg-purple-100 w-10 h-10 rounded-full flex items-center justify-center">
+                                    <i data-lucide="bot" class="text-purple-600 w-6 h-6"></i>
+                                </div>
+                                <div>
+                                    <h2 class="font-bold text-slate-800">Sensei AI</h2>
+                                    <p class="text-xs text-slate-400">Powered by Gemini 2.5 Flash</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chat Area -->
+                        <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50" id="chat-messages">
+                            <!-- Welcome Message -->
+                            <div class="chat-bubble chat-ai">
+                                <p>Konnichiwa! I am your Sensei. Let's practice Japanese! 🇯🇵<br>Try saying "Hello" or ask me a question.</p>
+                            </div>
+                            ${this.state.chatHistory.map(msg => `
+                                <div class="chat-bubble ${msg.role === 'user' ? 'chat-user' : 'chat-ai'}">
+                                    ${msg.role === 'ai' ? marked.parse(msg.text) : msg.text}
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <!-- Input Area -->
+                        <div class="flex-none p-4 bg-white border-t border-slate-200">
+                            <form onsubmit="app.handleChat(event)" class="flex gap-2">
+                                <input type="text" id="chat-input" class="flex-1 border border-slate-300 rounded-full px-4 py-3 focus:outline-none focus:border-purple-500" placeholder="Type a message (English or Japanese)...">
+                                <button type="submit" id="chat-send" class="bg-purple-600 text-white rounded-full w-12 h-12 flex items-center justify-center hover:bg-purple-700 transition disabled:opacity-50">
+                                    <i data-lucide="send" class="w-5 h-5 ml-1"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                `;
+                // Scroll to bottom
+                const chatArea = document.getElementById('chat-messages');
+                chatArea.scrollTop = chatArea.scrollHeight;
+            }
+
+            async handleChat(e) {
+                e.preventDefault();
+                const input = document.getElementById('chat-input');
+                const btn = document.getElementById('chat-send');
+                const container = document.getElementById('chat-messages');
+                const text = input.value.trim();
+
+                if (!text) return;
+
+                // 1. Add User Message
+                this.state.chatHistory.push({ role: 'user', text: text });
+                container.innerHTML += `<div class="chat-bubble chat-user">${text}</div>`;
+                input.value = '';
+                btn.disabled = true;
+                container.scrollTop = container.scrollHeight;
+
+                // 2. Add Loading State
+                const loadingId = 'loading-' + Date.now();
+                container.innerHTML += `
+                    <div id="${loadingId}" class="chat-bubble chat-ai flex items-center gap-1 w-16">
+                        <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+                    </div>
+                `;
+                container.scrollTop = container.scrollHeight;
+
+                try {
+                    // 3. Call Gemini
+                    const systemPrompt = "You are a friendly Japanese language Sensei. The user is a beginner (N5 level). Correct their Japanese gently if they make mistakes. Keep your responses concise (under 50 words usually). Use English to explain, but use Kana/Romaji for Japanese words. Be encouraging.";
+                    
+                    const result = await gemini.generateText(text, systemPrompt);
+                    const reply = result.candidates[0].content.parts[0].text;
+
+                    // 4. Update UI
+                    document.getElementById(loadingId).remove();
+                    this.state.chatHistory.push({ role: 'ai', text: reply });
+                    container.innerHTML += `<div class="chat-bubble chat-ai markdown-prose">${marked.parse(reply)}</div>`;
+                    
+                } catch (err) {
+                    document.getElementById(loadingId).remove();
+                    container.innerHTML += `<div class="chat-bubble chat-ai text-red-500">Sensei is disconnected. Please try again.</div>`;
+                }
+
+                btn.disabled = false;
+                container.scrollTop = container.scrollHeight;
+                input.focus();
             }
 
             renderQuests(container) {
