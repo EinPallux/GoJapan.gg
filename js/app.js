@@ -301,7 +301,12 @@ class GoJapanApp {
                             ${userData.name.charAt(0).toUpperCase()}
                         </div>
                         <div class="flex-1">
-                            <h2 class="text-3xl font-bold mb-2">${userData.name}</h2>
+                            <div class="flex items-center gap-3 mb-2">
+                                <h2 class="text-3xl font-bold">${userData.name}</h2>
+                                <button onclick="app.showEditUsernameModal()" class="btn bg-white/20 hover:bg-white/30 text-white text-sm px-4 py-2 backdrop-blur-xl" title="Edit username">
+                                    ✏️ Edit
+                                </button>
+                            </div>
                             <div class="flex gap-4 text-white/90">
                                 <span>Level ${userData.level}</span>
                                 <span>•</span>
@@ -425,6 +430,106 @@ class GoJapanApp {
             toast.style.animation = 'slideInRight 0.3s ease reverse';
             setTimeout(() => toast.remove(), 300);
         }, 3000);
+    }
+
+    showEditUsernameModal() {
+        const userData = UserData.getData();
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay active';
+        modal.id = 'usernameModal';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h2 class="text-2xl font-bold text-gradient">Edit Username</h2>
+                    <button onclick="app.closeUsernameModal()" class="text-gray-500 hover:text-gray-700 text-3xl">&times;</button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Current Username</label>
+                        <div class="p-3 bg-gray-100 rounded-lg text-gray-700">${userData.name}</div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="newUsername" class="block text-sm font-semibold text-gray-700 mb-2">New Username</label>
+                        <input type="text" 
+                               id="newUsername" 
+                               class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-sakura-500 focus:outline-none"
+                               placeholder="Enter new username"
+                               value="${userData.name}"
+                               maxlength="20">
+                        <p class="text-xs text-gray-500 mt-1">Maximum 20 characters</p>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button onclick="app.closeUsernameModal()" class="btn btn-secondary">
+                        Cancel
+                    </button>
+                    <button onclick="app.updateUsername()" class="btn btn-primary">
+                        💾 Save Username
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Focus on input and select text
+        setTimeout(() => {
+            const input = document.getElementById('newUsername');
+            input.focus();
+            input.select();
+            
+            // Allow Enter key to save
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.updateUsername();
+                }
+            });
+        }, 100);
+    }
+
+    updateUsername() {
+        const input = document.getElementById('newUsername');
+        const newUsername = input.value.trim();
+        
+        if (!newUsername) {
+            this.showNotification('Username cannot be empty!', 'error');
+            input.focus();
+            return;
+        }
+        
+        if (newUsername.length < 2) {
+            this.showNotification('Username must be at least 2 characters!', 'error');
+            input.focus();
+            return;
+        }
+        
+        if (newUsername.length > 20) {
+            this.showNotification('Username must be 20 characters or less!', 'error');
+            input.focus();
+            return;
+        }
+        
+        // Update username
+        UserData.updateData({ name: newUsername });
+        this.updateUserDisplay();
+        this.closeUsernameModal();
+        this.showNotification('Username updated successfully! 🎉', 'success');
+        
+        // Reload profile page if currently on it
+        if (this.currentPage === 'profile') {
+            this.loadPage('profile');
+        }
+    }
+
+    closeUsernameModal() {
+        const modal = document.getElementById('usernameModal');
+        if (modal) {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        }
     }
 }
 

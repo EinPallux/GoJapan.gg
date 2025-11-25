@@ -470,6 +470,17 @@ body {
     }
 }
 
+/* Input Fields */
+input[type="text"], input[type="email"], input[type="password"] {
+    font-family: 'Outfit', sans-serif;
+    transition: all 0.2s ease;
+}
+
+input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(249, 64, 138, 0.2);
+}
+
 /* Utility Classes */
 .glass-effect {
     background: rgba(255, 255, 255, 0.8);
