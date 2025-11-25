@@ -12,6 +12,7 @@ window.UserData = {
         hiraganaProgress: 0,
         katakanaProgress: 0,
         grammarProgress: 0,
+        japanTripDate: null,
         
         // Learning Progress
         completedLessons: [],

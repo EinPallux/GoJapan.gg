@@ -471,14 +471,18 @@ body {
 }
 
 /* Input Fields */
-input[type="text"], input[type="email"], input[type="password"] {
+input[type="text"], input[type="email"], input[type="password"], input[type="date"] {
     font-family: 'Outfit', sans-serif;
     transition: all 0.2s ease;
 }
 
-input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus {
+input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, input[type="date"]:focus {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(249, 64, 138, 0.2);
+}
+
+input[type="date"] {
+    cursor: pointer;
 }
 
 /* Utility Classes */

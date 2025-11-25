@@ -396,6 +396,43 @@ class GoJapanApp {
                         </div>
                     </div>
                 </div>
+
+                <!-- Japan Trip Countdown -->
+                <div class="card bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-indigo-200">
+                    <div class="flex items-start gap-4">
+                        <div class="text-4xl">✈️</div>
+                        <div class="flex-1">
+                            <h3 class="text-xl font-bold text-indigo-800 mb-2">Japan Trip Countdown</h3>
+                            <p class="text-indigo-700 mb-4">Set your next trip date to Japan and track your countdown!</p>
+                            
+                            ${userData.japanTripDate ? `
+                                <div class="mb-4 p-4 bg-white rounded-lg border-2 border-indigo-300">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <p class="text-sm text-gray-600 mb-1">Your trip date:</p>
+                                            <p class="text-xl font-bold text-indigo-600">${new Date(userData.japanTripDate).toLocaleDateString('de-DE', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-3xl font-bold text-sakura-600">${Math.ceil((new Date(userData.japanTripDate) - new Date()) / (1000 * 60 * 60 * 24))}</p>
+                                            <p class="text-sm text-gray-600">Days left</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            <div class="flex gap-3">
+                                <button onclick="app.showJapanTripModal()" class="btn btn-primary">
+                                    ${userData.japanTripDate ? '📅 Change Date' : '📅 Set Trip Date'}
+                                </button>
+                                ${userData.japanTripDate ? `
+                                    <button onclick="app.clearJapanTripDate()" class="btn btn-secondary">
+                                        ❌ Clear Date
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         `;
     }
@@ -412,6 +449,148 @@ class GoJapanApp {
         
         const xpPercentage = (userData.xp / userData.xpToNextLevel) * 100;
         document.getElementById('xpBar').style.width = `${xpPercentage}%`;
+        
+        // Update Japan countdown
+        this.updateJapanCountdown();
+    }
+
+    updateJapanCountdown() {
+        const userData = UserData.getData();
+        const countdownElement = document.getElementById('japanCountdown');
+        const countdownHeader = document.getElementById('japanCountdownHeader');
+        
+        if (userData.japanTripDate) {
+            const daysLeft = Math.ceil((new Date(userData.japanTripDate) - new Date()) / (1000 * 60 * 60 * 24));
+            
+            if (daysLeft >= 0) {
+                countdownElement.textContent = daysLeft;
+                countdownHeader.style.display = 'block';
+            } else {
+                // Trip date has passed
+                countdownHeader.style.display = 'none';
+            }
+        } else {
+            countdownHeader.style.display = 'none';
+        }
+    }
+
+    showJapanTripModal() {
+        const userData = UserData.getData();
+        const currentDate = userData.japanTripDate ? userData.japanTripDate.split('T')[0] : '';
+        const today = new Date().toISOString().split('T')[0];
+        
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay active';
+        modal.id = 'japanTripModal';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h2 class="text-2xl font-bold text-gradient">✈️ Set Japan Trip Date</h2>
+                    <button onclick="app.closeJapanTripModal()" class="text-gray-500 hover:text-gray-700 text-3xl">&times;</button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <label for="tripDate" class="block text-sm font-semibold text-gray-700 mb-2">When are you flying to Japan?</label>
+                        <input type="date" 
+                               id="tripDate" 
+                               class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-sakura-500 focus:outline-none"
+                               min="${today}"
+                               value="${currentDate}">
+                        <p class="text-xs text-gray-500 mt-1">Select your trip date to see the countdown</p>
+                    </div>
+                    
+                    <div class="p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
+                        <div class="flex items-start gap-3">
+                            <span class="text-2xl">💡</span>
+                            <div>
+                                <p class="font-semibold text-blue-900 mb-1">Tip:</p>
+                                <p class="text-blue-800 text-sm">Set your Japan trip date to stay motivated! The countdown will appear in the header.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button onclick="app.closeJapanTripModal()" class="btn btn-secondary">
+                        Cancel
+                    </button>
+                    <button onclick="app.saveJapanTripDate()" class="btn btn-primary">
+                        ✈️ Save Date
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Focus on input
+        setTimeout(() => {
+            const input = document.getElementById('tripDate');
+            input.focus();
+            
+            // Allow Enter key to save
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.saveJapanTripDate();
+                }
+            });
+        }, 100);
+    }
+
+    saveJapanTripDate() {
+        const input = document.getElementById('tripDate');
+        const tripDate = input.value;
+        
+        if (!tripDate) {
+            this.showNotification('Please select a date!', 'error');
+            input.focus();
+            return;
+        }
+        
+        const selectedDate = new Date(tripDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (selectedDate < today) {
+            this.showNotification('Please select a future date!', 'error');
+            input.focus();
+            return;
+        }
+        
+        // Save the date
+        UserData.updateData({ japanTripDate: tripDate });
+        this.updateUserDisplay();
+        this.closeJapanTripModal();
+        
+        const daysLeft = Math.ceil((selectedDate - new Date()) / (1000 * 60 * 60 * 24));
+        this.showNotification(`Japan trip set! ${daysLeft} days to go! 🎌`, 'success');
+        
+        // Reload profile page if currently on it
+        if (this.currentPage === 'profile') {
+            this.loadPage('profile');
+        }
+    }
+
+    clearJapanTripDate() {
+        if (confirm('Are you sure you want to clear your Japan trip date?')) {
+            UserData.updateData({ japanTripDate: null });
+            this.updateUserDisplay();
+            this.showNotification('Japan trip date cleared', 'success');
+            
+            // Reload profile page
+            if (this.currentPage === 'profile') {
+                this.loadPage('profile');
+            }
+        }
+    }
+
+    closeJapanTripModal() {
+        const modal = document.getElementById('japanTripModal');
+        if (modal) {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        }
     }
 
     showNotification(message, type = 'success') {
