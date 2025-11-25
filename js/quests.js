@@ -1,5 +1,5 @@
 // Quests Module
-const Quests = {
+window.Quests = {
     init() {
         this.render();
     },

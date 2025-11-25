@@ -1,5 +1,5 @@
 // Complete N5 Learning Path Data
-const LearningPathData = {
+window.LearningPathData = {
     units: [
         {
             id: 'unit-1',

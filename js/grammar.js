@@ -1,5 +1,5 @@
 // Grammar Module
-const Grammar = {
+window.Grammar = {
     currentCategory: 'basics',
 
     grammarData: {

@@ -1,5 +1,5 @@
 // Learning Path Module
-const LearningPath = {
+window.LearningPath = {
     currentLesson: null,
 
     init() {

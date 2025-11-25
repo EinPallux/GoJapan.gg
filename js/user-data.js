@@ -1,5 +1,5 @@
 // User Data Management System
-const UserData = {
+window.UserData = {
     defaultData: {
         name: 'Guest User',
         level: 1,

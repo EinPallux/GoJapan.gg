@@ -1,5 +1,5 @@
 // Complete Kana Data
-const KanaData = {
+window.KanaData = {
     hiragana: [
         // Basic (Gojūon)
         { kana: 'あ', romaji: 'a' }, { kana: 'い', romaji: 'i' }, { kana: 'う', romaji: 'u' }, { kana: 'え', romaji: 'e' }, { kana: 'お', romaji: 'o' },

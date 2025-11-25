@@ -1,5 +1,5 @@
 // Kana Dojo Module
-const KanaDojo = {
+window.KanaDojo = {
     currentMode: 'hiragana',
     currentView: 'chart',
     practiceQueue: [],

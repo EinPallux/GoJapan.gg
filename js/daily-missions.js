@@ -1,5 +1,5 @@
 // Daily Missions Module
-const DailyMissions = {
+window.DailyMissions = {
     init() {
         this.render();
     },

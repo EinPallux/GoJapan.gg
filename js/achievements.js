@@ -1,5 +1,5 @@
 // Achievements Module
-const Achievements = {
+window.Achievements = {
     currentFilter: 'all',
 
     init() {

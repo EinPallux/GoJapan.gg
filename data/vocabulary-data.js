@@ -1,5 +1,5 @@
 // N5 Vocabulary Database
-const VocabularyData = {
+window.VocabularyData = {
     nouns: [
         { japanese: 'ひと', romaji: 'hito', english: 'person', german: 'Person' },
         { japanese: 'こども', romaji: 'kodomo', english: 'child', german: 'Kind' },

@@ -1,5 +1,5 @@
 // Vocabulary Learning Module
-const Vocabulary = {
+window.Vocabulary = {
     currentCategory: 'nouns',
     currentView: 'browse',
     gameMode: null,
