@@ -6,6 +6,12 @@ window.DailyMissions = {
 
     render() {
         const container = document.getElementById('dailyMissionsContainer');
+        
+        if (!container) {
+            console.error('DailyMissions container not found!');
+            return;
+        }
+        
         const userData = UserData.getData();
         
         const missions = userData.dailyMissions;

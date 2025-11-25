@@ -8,6 +8,12 @@ window.Achievements = {
 
     render() {
         const container = document.getElementById('achievementsContainer');
+        
+        if (!container) {
+            console.error('Achievements container not found!');
+            return;
+        }
+        
         const userData = UserData.getData();
         
         const achievements = userData.achievements;

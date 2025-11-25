@@ -56,56 +56,70 @@ class GoJapanApp {
                     pageSubtitle.textContent = 'Follow the path from beginner to N5 mastery';
                     pageContent.innerHTML = this.getLearningPathHTML();
                     setTimeout(() => {
-                        if (window.LearningPath) window.LearningPath.init();
-                    }, 100);
+                        if (window.LearningPath && document.getElementById('learningPathContainer')) {
+                            window.LearningPath.init();
+                        }
+                    }, 250);
                     break;
                 case 'kana-dojo':
                     pageTitle.textContent = 'Kana Dojo';
                     pageSubtitle.textContent = 'Master Hiragana and Katakana';
                     pageContent.innerHTML = this.getKanaDojoHTML();
                     setTimeout(() => {
-                        if (window.KanaDojo) window.KanaDojo.init();
-                    }, 100);
+                        if (window.KanaDojo && document.getElementById('kanaDojoContainer')) {
+                            window.KanaDojo.init();
+                        }
+                    }, 250);
                     break;
                 case 'vocabulary':
                     pageTitle.textContent = 'Vocabulary';
                     pageSubtitle.textContent = 'Learn all N5 vocabulary words';
                     pageContent.innerHTML = this.getVocabularyHTML();
                     setTimeout(() => {
-                        if (window.Vocabulary) window.Vocabulary.init();
-                    }, 100);
+                        if (window.Vocabulary && document.getElementById('vocabularyContainer')) {
+                            window.Vocabulary.init();
+                        }
+                    }, 250);
                     break;
                 case 'grammar':
                     pageTitle.textContent = 'Grammar Rules';
                     pageSubtitle.textContent = 'Master essential N5 grammar patterns';
                     pageContent.innerHTML = this.getGrammarHTML();
                     setTimeout(() => {
-                        if (window.Grammar) window.Grammar.init();
-                    }, 100);
+                        if (window.Grammar && document.getElementById('grammarContainer')) {
+                            window.Grammar.init();
+                        }
+                    }, 250);
                     break;
                 case 'achievements':
                     pageTitle.textContent = 'Achievements';
                     pageSubtitle.textContent = 'Track your learning milestones';
                     pageContent.innerHTML = this.getAchievementsHTML();
                     setTimeout(() => {
-                        if (window.Achievements) window.Achievements.init();
-                    }, 100);
+                        if (window.Achievements && document.getElementById('achievementsContainer')) {
+                            window.Achievements.init();
+                        }
+                    }, 250);
                     break;
                 case 'quests':
                     pageTitle.textContent = 'Quests';
                     pageSubtitle.textContent = 'Complete quests to earn XP and rewards';
                     pageContent.innerHTML = this.getQuestsHTML();
                     setTimeout(() => {
-                        if (window.Quests) window.Quests.init();
-                    }, 100);
+                        if (window.Quests && document.getElementById('questsContainer')) {
+                            window.Quests.init();
+                        }
+                    }, 250);
                     break;
                 case 'daily-missions':
                     pageTitle.textContent = 'Daily Missions';
                     pageSubtitle.textContent = 'Complete daily challenges to maintain your streak';
                     pageContent.innerHTML = this.getDailyMissionsHTML();
                     setTimeout(() => {
-                        if (window.DailyMissions) window.DailyMissions.init();
-                    }, 100);
+                        if (window.DailyMissions && document.getElementById('dailyMissionsContainer')) {
+                            window.DailyMissions.init();
+                        }
+                    }, 250);
                     break;
                 case 'profile':
                     pageTitle.textContent = 'Profile';

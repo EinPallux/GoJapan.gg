@@ -13,6 +13,11 @@ window.KanaDojo = {
     render() {
         const container = document.getElementById('kanaDojoContainer');
         
+        if (!container) {
+            console.error('KanaDojo container not found!');
+            return;
+        }
+        
         container.innerHTML = `
             <div class="space-y-6">
                 <!-- Mode Selector -->

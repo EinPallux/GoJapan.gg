@@ -323,6 +323,11 @@ window.Grammar = {
     render() {
         const container = document.getElementById('grammarContainer');
         
+        if (!container) {
+            console.error('Grammar container not found!');
+            return;
+        }
+        
         container.innerHTML = `
             <div class="space-y-6">
                 <!-- Category Selector -->

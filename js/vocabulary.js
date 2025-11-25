@@ -14,6 +14,11 @@ window.Vocabulary = {
     render() {
         const container = document.getElementById('vocabularyContainer');
         
+        if (!container) {
+            console.error('Vocabulary container not found!');
+            return;
+        }
+        
         container.innerHTML = `
             <div class="space-y-6">
                 <!-- Category Selector -->

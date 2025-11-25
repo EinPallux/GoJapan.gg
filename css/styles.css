@@ -30,6 +30,28 @@ html {
     background: linear-gradient(to bottom, #e91e6e, #4f46e5);
 }
 
+/* Category Button Styles */
+.category-btn {
+    padding: 16px 12px;
+    border-radius: 16px;
+    border: 2px solid #e2e8f0;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.category-btn:hover {
+    border-color: #f9408a;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(249, 64, 138, 0.2);
+}
+
+.category-btn.active {
+    border-color: #f9408a;
+    background: linear-gradient(135deg, rgba(249, 64, 138, 0.1), rgba(99, 102, 241, 0.1));
+}
+
 /* Page Content Transitions */
 #pageContent {
     transition: opacity 0.3s ease;
