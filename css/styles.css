@@ -30,6 +30,11 @@ html {
     background: linear-gradient(to bottom, #e91e6e, #4f46e5);
 }
 
+/* Page Content Transitions */
+#pageContent {
+    transition: opacity 0.3s ease;
+}
+
 /* Body Styling */
 body {
     font-family: 'Outfit', sans-serif;

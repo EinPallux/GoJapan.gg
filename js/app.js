@@ -55,43 +55,57 @@ class GoJapanApp {
                     pageTitle.textContent = 'Learning Path';
                     pageSubtitle.textContent = 'Follow the path from beginner to N5 mastery';
                     pageContent.innerHTML = this.getLearningPathHTML();
-                    if (window.LearningPath) window.LearningPath.init();
+                    setTimeout(() => {
+                        if (window.LearningPath) window.LearningPath.init();
+                    }, 100);
                     break;
                 case 'kana-dojo':
                     pageTitle.textContent = 'Kana Dojo';
                     pageSubtitle.textContent = 'Master Hiragana and Katakana';
                     pageContent.innerHTML = this.getKanaDojoHTML();
-                    if (window.KanaDojo) window.KanaDojo.init();
+                    setTimeout(() => {
+                        if (window.KanaDojo) window.KanaDojo.init();
+                    }, 100);
                     break;
                 case 'vocabulary':
                     pageTitle.textContent = 'Vocabulary';
                     pageSubtitle.textContent = 'Learn all N5 vocabulary words';
                     pageContent.innerHTML = this.getVocabularyHTML();
-                    if (window.Vocabulary) window.Vocabulary.init();
+                    setTimeout(() => {
+                        if (window.Vocabulary) window.Vocabulary.init();
+                    }, 100);
                     break;
                 case 'grammar':
                     pageTitle.textContent = 'Grammar Rules';
                     pageSubtitle.textContent = 'Master essential N5 grammar patterns';
                     pageContent.innerHTML = this.getGrammarHTML();
-                    if (window.Grammar) window.Grammar.init();
+                    setTimeout(() => {
+                        if (window.Grammar) window.Grammar.init();
+                    }, 100);
                     break;
                 case 'achievements':
                     pageTitle.textContent = 'Achievements';
                     pageSubtitle.textContent = 'Track your learning milestones';
                     pageContent.innerHTML = this.getAchievementsHTML();
-                    if (window.Achievements) window.Achievements.init();
+                    setTimeout(() => {
+                        if (window.Achievements) window.Achievements.init();
+                    }, 100);
                     break;
                 case 'quests':
                     pageTitle.textContent = 'Quests';
                     pageSubtitle.textContent = 'Complete quests to earn XP and rewards';
                     pageContent.innerHTML = this.getQuestsHTML();
-                    if (window.Quests) window.Quests.init();
+                    setTimeout(() => {
+                        if (window.Quests) window.Quests.init();
+                    }, 100);
                     break;
                 case 'daily-missions':
                     pageTitle.textContent = 'Daily Missions';
                     pageSubtitle.textContent = 'Complete daily challenges to maintain your streak';
                     pageContent.innerHTML = this.getDailyMissionsHTML();
-                    if (window.DailyMissions) window.DailyMissions.init();
+                    setTimeout(() => {
+                        if (window.DailyMissions) window.DailyMissions.init();
+                    }, 100);
                     break;
                 case 'profile':
                     pageTitle.textContent = 'Profile';
