@@ -109,12 +109,12 @@ window.Vocabulary = {
                         const isMastered = userData.vocabularyMastered.includes(word.japanese);
                         return `
                             <div class="vocab-browse-card ${isMastered ? 'mastered' : ''}" 
-                                 onclick="Vocabulary.markAsLearned('${word.japanese}')">
+                                 onclick="Vocabulary.toggleWordMastery('${word.japanese}')">
                                 <div class="flex items-start justify-between mb-2">
                                     <div class="font-japanese text-2xl font-bold text-sakura-600">
                                         ${word.japanese}
                                     </div>
-                                    ${isMastered ? '<div class="text-2xl">✅</div>' : '<div class="text-2xl opacity-30">⭕</div>'}
+                                    ${isMastered ? '<div class="text-2xl cursor-pointer" title="Click to unmark">✅</div>' : '<div class="text-2xl opacity-30 cursor-pointer" title="Click to mark as learned">⭕</div>'}
                                 </div>
                                 <div class="text-gray-600 mb-3">${word.romaji}</div>
                                 <div class="space-y-1">
@@ -136,7 +136,7 @@ window.Vocabulary = {
                     <div class="flex items-center gap-3 text-indigo-700">
                         <span class="text-2xl">💡</span>
                         <div>
-                            <p class="font-semibold">Tip: Click on any word to mark it as learned!</p>
+                            <p class="font-semibold">Tip: Click on any word to mark/unmark it as learned!</p>
                             <p class="text-sm">Use the games to practice and reinforce your learning.</p>
                         </div>
                     </div>
@@ -334,6 +334,27 @@ window.Vocabulary = {
 
     markAsLearned(wordJapanese) {
         UserData.learnVocabulary(wordJapanese);
+        this.render();
+    },
+
+    toggleWordMastery(wordJapanese) {
+        const userData = UserData.getData();
+        const index = userData.vocabularyMastered.indexOf(wordJapanese);
+        
+        if (index > -1) {
+            // Word is already mastered, remove it
+            userData.vocabularyMastered.splice(index, 1);
+            userData.wordsLearned = Math.max(0, userData.wordsLearned - 1);
+            UserData.saveData(userData);
+            if (window.app) {
+                window.app.updateUserDisplay();
+                window.app.showNotification('Word unmarked as learned', 'success');
+            }
+        } else {
+            // Word is not mastered, add it
+            UserData.learnVocabulary(wordJapanese);
+        }
+        
         this.render();
     },
 

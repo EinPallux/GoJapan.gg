@@ -377,6 +377,20 @@ class GoJapanApp {
                         </div>
                     </div>
                 </div>
+
+                <!-- Danger Zone -->
+                <div class="card bg-red-50 border-2 border-red-200">
+                    <div class="flex items-start gap-4">
+                        <div class="text-4xl">⚠️</div>
+                        <div class="flex-1">
+                            <h3 class="text-xl font-bold text-red-800 mb-2">Danger Zone</h3>
+                            <p class="text-red-700 mb-4">Resetting your progress will permanently delete all your learning data. This action cannot be undone!</p>
+                            <button onclick="UserData.resetAllData()" class="btn bg-red-600 hover:bg-red-700 text-white">
+                                🗑️ Reset All Progress
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         `;
     }
