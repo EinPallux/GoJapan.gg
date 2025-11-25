@@ -4,6 +4,7 @@ window.KanaDojo = {
     currentView: 'chart',
     practiceQueue: [],
     currentKana: null,
+    currentQuestionType: 'kanaToRomaji', // 'kanaToRomaji' or 'romajiToKana'
     practiceStats: { correct: 0, incorrect: 0, streak: 0 },
 
     init() {
@@ -211,17 +212,24 @@ window.KanaDojo = {
                 
                 <!-- Question -->
                 <div class="text-center mb-12">
-                    <p class="text-gray-600 mb-6">What is the romaji for this kana?</p>
-                    <div class="inline-flex items-center justify-center w-48 h-48 bg-gradient-to-br from-sakura-100 to-indigo-100 rounded-3xl border-4 border-sakura-300 shadow-xl mb-8">
-                        <div class="font-japanese text-8xl font-bold text-gradient">${this.currentKana.kana}</div>
-                    </div>
+                    ${this.currentQuestionType === 'kanaToRomaji' ? `
+                        <p class="text-gray-600 mb-6">What is the romaji for this kana?</p>
+                        <div class="inline-flex items-center justify-center w-48 h-48 bg-gradient-to-br from-sakura-100 to-indigo-100 rounded-3xl border-4 border-sakura-300 shadow-xl mb-8">
+                            <div class="font-japanese text-8xl font-bold text-gradient">${this.currentKana.kana}</div>
+                        </div>
+                    ` : `
+                        <p class="text-gray-600 mb-6">Which kana represents this romaji?</p>
+                        <div class="inline-flex items-center justify-center w-48 h-48 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-3xl border-4 border-indigo-300 shadow-xl mb-8">
+                            <div class="text-6xl font-bold text-gradient">${this.currentKana.romaji}</div>
+                        </div>
+                    `}
                 </div>
                 
                 <!-- Options -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
                     ${options.map((option, index) => `
                         <button onclick="KanaDojo.checkAnswer('${option}')" 
-                                class="option-button p-6 text-2xl font-bold rounded-2xl border-3 border-gray-300 bg-white hover:border-sakura-500 hover:bg-sakura-50 transition-all duration-200 hover:scale-105">
+                                class="option-button p-6 ${this.currentQuestionType === 'romajiToKana' ? 'font-japanese text-5xl' : 'text-2xl'} font-bold rounded-2xl border-3 border-gray-300 bg-white hover:border-sakura-500 hover:bg-sakura-50 transition-all duration-200 hover:scale-105">
                             ${option}
                         </button>
                     `).join('')}
@@ -270,9 +278,12 @@ window.KanaDojo = {
                 else weight = 1; // Mastered - occasional review
             }
             
-            // Add to weighted list
+            // Add to weighted list (both forward and reverse)
             for (let i = 0; i < weight; i++) {
-                weightedList.push(kana);
+                // Add kana -> romaji question
+                weightedList.push({ kana: kana, type: 'kanaToRomaji' });
+                // Add romaji -> kana question (reverse)
+                weightedList.push({ kana: kana, type: 'romajiToKana' });
             }
         });
         
@@ -285,30 +296,55 @@ window.KanaDojo = {
             this.generatePracticeQueue();
         }
         
-        this.currentKana = this.practiceQueue.pop();
+        const questionData = this.practiceQueue.pop();
+        this.currentKana = questionData.kana;
+        this.currentQuestionType = questionData.type;
         this.render();
     },
 
     generateOptions() {
         const kanaList = this.currentMode === 'hiragana' ? KanaData.hiragana : KanaData.katakana;
-        const correctAnswer = this.currentKana.romaji;
         
-        // Get 3 random wrong answers
-        const wrongAnswers = [];
-        while (wrongAnswers.length < 3) {
-            const randomKana = kanaList[Math.floor(Math.random() * kanaList.length)];
-            if (randomKana.romaji !== correctAnswer && !wrongAnswers.includes(randomKana.romaji)) {
-                wrongAnswers.push(randomKana.romaji);
+        if (this.currentQuestionType === 'kanaToRomaji') {
+            // Generate romaji options
+            const correctAnswer = this.currentKana.romaji;
+            
+            // Get 3 random wrong answers
+            const wrongAnswers = [];
+            while (wrongAnswers.length < 3) {
+                const randomKana = kanaList[Math.floor(Math.random() * kanaList.length)];
+                if (randomKana.romaji !== correctAnswer && !wrongAnswers.includes(randomKana.romaji)) {
+                    wrongAnswers.push(randomKana.romaji);
+                }
             }
+            
+            // Combine and shuffle
+            const allOptions = [correctAnswer, ...wrongAnswers];
+            return this.shuffle(allOptions);
+        } else {
+            // Generate kana options
+            const correctAnswer = this.currentKana.kana;
+            
+            // Get 3 random wrong answers
+            const wrongAnswers = [];
+            while (wrongAnswers.length < 3) {
+                const randomKana = kanaList[Math.floor(Math.random() * kanaList.length)];
+                if (randomKana.kana !== correctAnswer && !wrongAnswers.includes(randomKana.kana)) {
+                    wrongAnswers.push(randomKana.kana);
+                }
+            }
+            
+            // Combine and shuffle
+            const allOptions = [correctAnswer, ...wrongAnswers];
+            return this.shuffle(allOptions);
         }
-        
-        // Combine and shuffle
-        const allOptions = [correctAnswer, ...wrongAnswers];
-        return this.shuffle(allOptions);
     },
 
     checkAnswer(selectedAnswer) {
-        const isCorrect = selectedAnswer === this.currentKana.romaji;
+        const correctAnswer = this.currentQuestionType === 'kanaToRomaji' 
+            ? this.currentKana.romaji 
+            : this.currentKana.kana;
+        const isCorrect = selectedAnswer === correctAnswer;
         
         // Update user data
         UserData.updateKanaProgress(this.currentMode, this.currentKana.kana, isCorrect);
@@ -327,12 +363,12 @@ window.KanaDojo = {
         } else {
             this.practiceStats.incorrect++;
             this.practiceStats.streak = 0;
-            this.showFeedback(false, this.currentKana.romaji);
+            this.showFeedback(false, correctAnswer, this.currentQuestionType);
             // For wrong answers, user must click to continue (no auto-advance)
         }
     },
 
-    showFeedback(isCorrect, correctAnswer = null) {
+    showFeedback(isCorrect, correctAnswer = null, questionType = 'kanaToRomaji') {
         if (isCorrect) {
             // Auto-dismissing feedback for correct answers
             const feedback = document.createElement('div');
@@ -352,13 +388,15 @@ window.KanaDojo = {
             modal.className = 'bg-white rounded-3xl p-8 max-w-md mx-4 text-center shadow-2xl';
             modal.style.animation = 'slideInUp 0.3s ease';
             
+            const answerClass = questionType === 'romajiToKana' ? 'font-japanese text-6xl' : 'text-4xl';
+            
             modal.innerHTML = `
                 <div class="text-6xl mb-4">❌</div>
                 <h3 class="text-2xl font-bold text-red-600 mb-3">Incorrect!</h3>
                 <div class="mb-4 p-4 bg-gray-100 rounded-xl">
                     <p class="text-gray-600 text-sm mb-2">You selected the wrong answer</p>
                     <p class="text-gray-800 text-lg mb-3">The correct answer is:</p>
-                    <p class="text-4xl font-bold text-sakura-600">${correctAnswer}</p>
+                    <p class="${answerClass} font-bold text-sakura-600">${correctAnswer}</p>
                 </div>
                 <p class="text-gray-600 text-sm mb-6">Take a moment to remember this</p>
                 <button onclick="KanaDojo.dismissFeedback()" class="btn btn-primary w-full py-4 text-lg">
