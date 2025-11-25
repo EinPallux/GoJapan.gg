@@ -319,33 +319,68 @@ window.KanaDojo = {
             this.practiceStats.streak++;
             UserData.addXP(5);
             this.showFeedback(true);
+            
+            // Auto-advance after 1 second for correct answers
+            setTimeout(() => {
+                this.nextQuestion();
+            }, 1000);
         } else {
             this.practiceStats.incorrect++;
             this.practiceStats.streak = 0;
             this.showFeedback(false, this.currentKana.romaji);
+            // For wrong answers, user must click to continue (no auto-advance)
         }
-        
-        // Next question after delay
-        setTimeout(() => {
-            this.nextQuestion();
-        }, 1000);
     },
 
     showFeedback(isCorrect, correctAnswer = null) {
-        const feedback = document.createElement('div');
-        feedback.className = `fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 p-8 rounded-3xl text-center ${
-            isCorrect ? 'bg-green-500' : 'bg-red-500'
-        } text-white text-3xl font-bold shadow-2xl`;
-        feedback.style.animation = 'fadeIn 0.3s ease';
-        
         if (isCorrect) {
+            // Auto-dismissing feedback for correct answers
+            const feedback = document.createElement('div');
+            feedback.className = 'fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 p-8 rounded-3xl text-center bg-green-500 text-white text-3xl font-bold shadow-2xl';
+            feedback.style.animation = 'fadeIn 0.3s ease';
             feedback.innerHTML = '✅ Correct!<br><span class="text-lg">+5 XP</span>';
+            
+            document.body.appendChild(feedback);
+            setTimeout(() => feedback.remove(), 900);
         } else {
-            feedback.innerHTML = `❌ Incorrect<br><span class="text-lg">Correct answer: ${correctAnswer}</span>`;
+            // Modal feedback for incorrect answers - requires click to dismiss
+            const overlay = document.createElement('div');
+            overlay.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center';
+            overlay.style.animation = 'fadeIn 0.3s ease';
+            
+            const modal = document.createElement('div');
+            modal.className = 'bg-white rounded-3xl p-8 max-w-md mx-4 text-center shadow-2xl';
+            modal.style.animation = 'slideInUp 0.3s ease';
+            
+            modal.innerHTML = `
+                <div class="text-6xl mb-4">❌</div>
+                <h3 class="text-2xl font-bold text-red-600 mb-3">Incorrect!</h3>
+                <div class="mb-4 p-4 bg-gray-100 rounded-xl">
+                    <p class="text-gray-600 text-sm mb-2">You selected the wrong answer</p>
+                    <p class="text-gray-800 text-lg mb-3">The correct answer is:</p>
+                    <p class="text-4xl font-bold text-sakura-600">${correctAnswer}</p>
+                </div>
+                <p class="text-gray-600 text-sm mb-6">Take a moment to remember this</p>
+                <button onclick="KanaDojo.dismissFeedback()" class="btn btn-primary w-full py-4 text-lg">
+                    Continue ➡️
+                </button>
+            `;
+            
+            overlay.appendChild(modal);
+            overlay.id = 'kanaFeedbackModal';
+            document.body.appendChild(overlay);
         }
-        
-        document.body.appendChild(feedback);
-        setTimeout(() => feedback.remove(), 900);
+    },
+
+    dismissFeedback() {
+        const modal = document.getElementById('kanaFeedbackModal');
+        if (modal) {
+            modal.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => {
+                modal.remove();
+                this.nextQuestion();
+            }, 300);
+        }
     },
 
     endPractice() {
