@@ -467,8 +467,9 @@ window.Vocabulary = {
 };
 
 // Add vocabulary styles
-const style = document.createElement('style');
-style.textContent = `
+(function() {
+    const style = document.createElement('style');
+    style.textContent = `
     .category-btn {
         padding: 16px 12px;
         border-radius: 16px;
@@ -564,3 +565,4 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+})();

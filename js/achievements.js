@@ -189,8 +189,9 @@ window.Achievements = {
 };
 
 // Add achievement styles
-const style = document.createElement('style');
-style.textContent = `
+(function() {
+    const style = document.createElement('style');
+    style.textContent = `
     .filter-btn {
         padding: 8px 16px;
         border-radius: 12px;
@@ -217,3 +218,4 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+})();

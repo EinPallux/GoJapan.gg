@@ -445,8 +445,9 @@ window.Grammar = {
 };
 
 // Add grammar styles
-const style = document.createElement('style');
-style.textContent = `
+(function() {
+    const style = document.createElement('style');
+    style.textContent = `
     .grammar-rule-card {
         background: white;
         transition: all 0.3s ease;
@@ -457,3 +458,4 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+})();

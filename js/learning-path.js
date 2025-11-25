@@ -268,8 +268,9 @@ window.LearningPath = {
 };
 
 // Add modal styles
-const style = document.createElement('style');
-style.textContent = `
+(function() {
+    const style = document.createElement('style');
+    style.textContent = `
     .lesson-card {
         padding: 16px;
         border-radius: 16px;
@@ -398,3 +399,4 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+})();

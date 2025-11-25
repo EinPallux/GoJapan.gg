@@ -365,8 +365,9 @@ window.KanaDojo = {
 };
 
 // Add option button styles
-const style = document.createElement('style');
-style.textContent += `
+(function() {
+    const style = document.createElement('style');
+    style.textContent += `
     .option-button {
         transition: all 0.2s ease;
     }
@@ -384,3 +385,4 @@ style.textContent += `
     }
 `;
 document.head.appendChild(style);
+})();

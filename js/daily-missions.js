@@ -161,8 +161,9 @@ window.DailyMissions = {
 };
 
 // Add mission styles
-const style = document.createElement('style');
-style.textContent = `
+(function() {
+    const style = document.createElement('style');
+    style.textContent = `
     .mission-card {
         padding: 24px;
         border-radius: 20px;
@@ -183,3 +184,4 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+})();
